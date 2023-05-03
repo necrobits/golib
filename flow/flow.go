@@ -4,6 +4,11 @@ import (
 	"fmt"
 )
 
+const (
+	// NoEvent is a special event, which is used to indicate that no event is sent to the state machine.
+	NoEvent Event = ""
+)
+
 type Flow struct {
 	id           string
 	flowType     string
@@ -24,6 +29,12 @@ type Action interface {
 
 // ActionType is the type of the action. It is used to identify the action in the FSMMap.
 type ActionType string
+
+// Event is the input to the state machine.
+type Event string
+
+// State is just a name for a state in the state machine.
+type State string
 
 // CreateFlowOpts is used to create a new Flow
 // ID is the unique identifier for the flow.
@@ -49,17 +60,17 @@ type Snapshot struct {
 	CurrentState State    `json:"current_state"`
 }
 
-// ActionHandler is the function that handles an action. It can modify the internal data of the flow.
-// It returns the new internal data, and an error if any.
-// If the error is not nil, the flow will not change its state.
-// If the error is nil, the flow will change its state according to the transitions in FSMMap.
-type ActionHandler func(data FlowData, a Action) (FlowData, error)
-
-// State is just a name for a state in the state machine.
-type State string
+// ActionHandler is the function that handles an action.
+// It returns:
+//   - an Event, which is the input to the state machine.
+//   - the new internal data of the flow, which replaces the old one.
+//
+// If the error is not nil, no event will be sent to the state machine, and the flow will remain in the same state.
+// If the error is nil, the flow will change its state according to the the transition table.
+type ActionHandler func(data FlowData, a Action) (Event, FlowData, error)
 
 // Transitions is a map, describing the transition from a state to the next state.
-type Transitions map[ActionType]State
+type Transitions map[Event]State
 
 // StateConfig is the configuration for a state in the state machine.
 // In addition to just a name, a State contains a handler function, and a map of transitions.
@@ -79,17 +90,24 @@ func (f *Flow) HandleAction(a Action) error {
 		return fmt.Errorf("illegal state: %s", f.currentState)
 	}
 	actionHandler := stateConfig.Handler
-	nextState, ok := stateConfig.Transitions[actionType]
-	if !ok {
-		return fmt.Errorf("no transition found for event: %s", actionType)
+
+	if actionHandler == nil {
+		return fmt.Errorf("no handler found for state: %s", f.currentState)
 	}
-	if actionHandler != nil {
-		newData, err := actionHandler(f.data, a)
-		if err != nil {
-			return err
+	inputEvent, nextData, err := actionHandler(f.data, a)
+	if err != nil {
+		return err
+	}
+	var nextState State
+	if inputEvent == NoEvent {
+		nextState = f.currentState
+	} else {
+		nextState, ok = stateConfig.Transitions[inputEvent]
+		if !ok {
+			return fmt.Errorf("no transition found for event: %s", actionType)
 		}
-		f.data = newData
 	}
+	f.data = nextData
 	f.currentState = nextState
 	return nil
 }
@@ -97,7 +115,7 @@ func (f *Flow) HandleAction(a Action) error {
 // New creates a new Flow.
 func New(opts CreateFlowOpts) *Flow {
 	if opts.TransitionTable == nil {
-		panic("FSMMap cannot be nil")
+		panic("TransitionTable cannot be nil")
 	}
 	if opts.InitialState == "" {
 		panic("InitialState cannot be empty")

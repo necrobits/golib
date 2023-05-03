@@ -13,6 +13,7 @@ const (
 	OrderFulfilled   flow.State = "OrderFulfilled"
 
 	PayForOrder flow.ActionType = "PayForOrder"
+	OrderPaid   flow.Event      = "OrderPaid"
 )
 
 type OrderInternalState struct {
@@ -39,7 +40,7 @@ func NewOrderFlowCreator() *OrderFlowCreator {
 		AwaitingPayment: flow.StateConfig{
 			Handler: f.HandlePayment,
 			Transitions: flow.Transitions{
-				PayForOrder: AwaitingShipping,
+				OrderPaid: AwaitingShipping,
 			},
 		},
 	}
@@ -60,15 +61,15 @@ func (f *OrderFlowCreator) NewFlowFromSnapshot(s *flow.Snapshot) *flow.Flow {
 	return flow.FromSnapshot(s, f.transTable)
 }
 
-func (f *OrderFlowCreator) HandlePayment(state flow.FlowData, a flow.Action) (flow.FlowData, error) {
+func (f *OrderFlowCreator) HandlePayment(state flow.FlowData, a flow.Action) (flow.Event, flow.FlowData, error) {
 	state = state.(OrderInternalState)
 	payment := a.(PaymentAction)
 	if payment.Amount != state.(OrderInternalState).TotalAmount {
-		return nil, fmt.Errorf("payment amount does not match order total")
+		return flow.NoEvent, nil, fmt.Errorf("payment amount does not match order total")
 	}
 	newState := state.(OrderInternalState)
 	newState.Paid = true
-	return newState, nil
+	return OrderPaid, newState, nil
 }
 
 func main() {
