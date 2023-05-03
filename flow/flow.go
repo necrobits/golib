@@ -9,6 +9,9 @@ const (
 	NoEvent Event = ""
 )
 
+// Flow is the state machine.
+// It contains the internal data of the flow, and the current state.
+// It also contains the transition table, which describes the state machine.
 type Flow struct {
 	id           string
 	flowType     string
@@ -27,10 +30,12 @@ type Action interface {
 	Type() ActionType
 }
 
-// ActionType is the type of the action. It is used to identify the action in the FSMMap.
+// ActionType is the type of the action. It is used to identify the action in the TransitionTable.
 type ActionType string
 
-// Event is the input to the state machine.
+// Event is the input to the state machine. It is the output of the action handler.
+// Hence, it is only a string. The action handler is responsible for changing the data of the flow.
+// It causes the state machine to change its state.
 type Event string
 
 // State is just a name for a state in the state machine.
@@ -42,8 +47,8 @@ type State string
 // Both ID and Type are used to identify the flow and restore it from a snapshot.
 //
 // Data is the initial internal data for the flow.
-// InitialState is the initial state for the flow. It must be one of the states in FSMMap.
-// FSMMap contains the description of the state machine for the flow.
+// InitialState is the initial state for the flow. It must be one of the states in TransitionTable.
+// TransitionTable contains the description of the state machine for the flow.
 type CreateFlowOpts struct {
 	ID              string
 	Type            string
