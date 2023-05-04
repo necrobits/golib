@@ -60,14 +60,17 @@ func NewOrderFlowCreator() *OrderFlowCreator {
 	f := &OrderFlowCreator{}
 	f.transTable = flow.TransitionTable{
 		AwaitingPayment: flow.StateConfig{
-			Handler: f.HandlePayment,
+			Handler: flow.NewRouter(flow.ActionRoutes{
+				PayForOrder: flow.TypedHandler(f.HandlePayment),
+				CancelOrder: flow.TypedHandler(f.HandleCancelation),
+			}).ToHandler(),
 			Transitions: flow.Transitions{
 				OrderPaid:     AwaitingShipping,
 				OrderCanceled: Canceled,
 			},
 		},
 		AwaitingShipping: flow.StateConfig{
-			Handler: f.HandleShipping,
+			Handler: flow.TypedHandler(f.HandleShipping),
 			Transitions: flow.Transitions{
 				OrderShipped: OrderFulfilled,
 			},
@@ -90,27 +93,23 @@ func (f *OrderFlowCreator) NewFlowFromSnapshot(s *flow.Snapshot) *flow.Flow {
 	return flow.FromSnapshot(s, f.transTable)
 }
 
-func (f *OrderFlowCreator) HandlePayment(state flow.FlowData, a flow.Action) (flow.Event, flow.FlowData, error) {
-	actionType := a.Type()
-	if actionType == PayForOrder {
-		state = state.(OrderInternalState)
-		payment := a.(PaymentAction)
-		if payment.Amount != state.(OrderInternalState).TotalAmount {
-			return flow.NoEvent, nil, fmt.Errorf("payment amount does not match order total")
-		}
-		newState := state.(OrderInternalState)
-		newState.Paid = true
-		return OrderPaid, newState, nil
-	}
-	if actionType == CancelOrder {
-		newState := state.(OrderInternalState)
-		newState.CanceledAt = time.Now().Unix()
-		return OrderCanceled, newState, nil
-	}
-	return flow.NoEvent, nil, fmt.Errorf("invalid action")
+func (f *OrderFlowCreator) HandleCancelation(state flow.FlowData, a CancelAction) (flow.Event, flow.FlowData, error) {
+	newState := state.(OrderInternalState)
+	newState.CanceledAt = time.Now().Unix()
+	return OrderCanceled, newState, nil
 }
 
-func (f *OrderFlowCreator) HandleShipping(state flow.FlowData, a flow.Action) (flow.Event, flow.FlowData, error) {
+func (f *OrderFlowCreator) HandlePayment(state flow.FlowData, payment PaymentAction) (flow.Event, flow.FlowData, error) {
+	state = state.(OrderInternalState)
+	if payment.Amount != state.(OrderInternalState).TotalAmount {
+		return flow.NoEvent, nil, fmt.Errorf("payment amount does not match order total")
+	}
+	newState := state.(OrderInternalState)
+	newState.Paid = true
+	return OrderPaid, newState, nil
+}
+
+func (f *OrderFlowCreator) HandleShipping(state flow.FlowData, a ShipOrderAction) (flow.Event, flow.FlowData, error) {
 	actionType := a.Type()
 	if actionType == ShipOrder {
 		state = state.(OrderInternalState)
