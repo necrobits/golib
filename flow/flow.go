@@ -9,15 +9,20 @@ const (
 	NoEvent Event = ""
 )
 
+var (
+	isDebugging = false
+)
+
 // Flow is the state machine.
 // It contains the internal data of the flow, and the current state.
 // It also contains the transition table, which describes the state machine.
 type Flow struct {
-	id           string
-	flowType     string
-	data         FlowData
-	currentState State
-	states       TransitionTable
+	id             string
+	flowType       string
+	data           FlowData
+	currentState   State
+	states         TransitionTable
+	defaultHandler ActionHandler
 }
 
 // FlowData is the internal data of the flow. This can be anything.
@@ -49,12 +54,14 @@ type State string
 // Data is the initial internal data for the flow.
 // InitialState is the initial state for the flow. It must be one of the states in TransitionTable.
 // TransitionTable contains the description of the state machine for the flow.
+// Handler is the default handler for the flow. If a state does not have a handler, this handler is used.
 type CreateFlowOpts struct {
 	ID              string
 	Type            string
 	Data            FlowData
 	InitialState    State
 	TransitionTable TransitionTable
+	Handler         ActionHandler
 }
 
 // Snapshot is used to persist the flow, and restore it later.
@@ -97,21 +104,30 @@ func (f *Flow) HandleAction(a Action) error {
 	actionHandler := stateConfig.Handler
 
 	if actionHandler == nil {
-		return fmt.Errorf("no handler found for state: %s", f.currentState)
+		if f.defaultHandler == nil {
+			return fmt.Errorf("no handler for state: %s and no default handler found. Did you forget to set one of them?", f.currentState)
+		}
+		actionHandler = f.defaultHandler
 	}
+	f.logf("Incoming action: %s\n", actionType)
 	inputEvent, nextData, err := actionHandler(f.data, a)
 	if err != nil {
+		f.logf("Error: %v\n", err)
 		return err
 	}
 	var nextState State
 	if inputEvent == NoEvent {
+		f.logf("No event is produced\n")
 		nextState = f.currentState
 	} else {
 		nextState, ok = stateConfig.Transitions[inputEvent]
 		if !ok {
 			return fmt.Errorf("no transition found for event: %s", actionType)
 		}
+		f.logf("Event: %s\n", inputEvent)
+		f.logf("State transition: %s -> %s\n", f.currentState, nextState)
 	}
+
 	f.data = nextData
 	f.currentState = nextState
 	return nil
@@ -125,12 +141,14 @@ func New(opts CreateFlowOpts) *Flow {
 	if opts.InitialState == "" {
 		panic("InitialState cannot be empty")
 	}
+	logf("Creating a new Flow(%s), ID=%s\n", opts.Type, opts.ID)
 	return &Flow{
-		id:           opts.ID,
-		flowType:     opts.Type,
-		data:         opts.Data,
-		currentState: opts.InitialState,
-		states:       opts.TransitionTable,
+		id:             opts.ID,
+		flowType:       opts.Type,
+		data:           opts.Data,
+		currentState:   opts.InitialState,
+		states:         opts.TransitionTable,
+		defaultHandler: opts.Handler,
 	}
 }
 
@@ -155,6 +173,14 @@ func FromSnapshot(s *Snapshot, stateMap TransitionTable) *Flow {
 	}
 }
 
+// WithDefaultActionHandler sets the default action handler for the flow.
+// If a state does not have a handler, the default handler will be used.
+// This is useful when you want to have a central place to handle all actions.
+func (f *Flow) WithDefaultActionHandler(handler ActionHandler) *Flow {
+	f.defaultHandler = handler
+	return f
+}
+
 func (f *Flow) ID() string {
 	return f.id
 }
@@ -173,4 +199,38 @@ func (f *Flow) Data() FlowData {
 
 func (f *Flow) TransitionTable() TransitionTable {
 	return f.states
+}
+
+func (f *Flow) logf(format string, a ...any) {
+	if isDebugging {
+		fmt.Printf("[%s %s]: ", f.flowType, f.id)
+		fmt.Printf(format, a...)
+	}
+}
+
+func (f *Flow) log(msg string) {
+	if isDebugging {
+		fmt.Printf("[%s %s]: ", f.flowType, f.id)
+		fmt.Println(msg)
+	}
+}
+
+func log(msg string) {
+	if isDebugging {
+		fmt.Print("[Flow]: ")
+		fmt.Println(msg)
+	}
+}
+
+func logf(format string, a ...any) {
+	if isDebugging {
+		fmt.Print("[Flow]: ")
+		fmt.Printf(format, a...)
+	}
+}
+
+// DebugMode enables or disables the debug mode.
+// When debug mode is enabled, the flow will print out debug messages.
+func DebugMode(enabled bool) {
+	isDebugging = enabled
 }
