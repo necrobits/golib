@@ -117,15 +117,15 @@ func (f *Flow) HandleAction(a Action) error {
 	}
 	var nextState State
 	if inputEvent == NoEvent {
-		f.logf("No event is produced\n")
+		f.logf("<Action>%s -> No event\n", actionType)
 		nextState = f.currentState
 	} else {
 		nextState, ok = stateConfig.Transitions[inputEvent]
 		if !ok {
 			return fmt.Errorf("no transition found for event: %s", actionType)
 		}
-		f.logf("Event: %s\n", inputEvent)
-		f.logf("State transition: %s -> %s\n", f.currentState, nextState)
+		f.logf("<Action>%s -> <Event>%s\n", actionType, inputEvent)
+		f.logf("Transition: %s -> %s\n", f.currentState, nextState)
 	}
 
 	f.data = nextData
