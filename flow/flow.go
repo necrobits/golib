@@ -87,6 +87,8 @@ type Transitions map[Event]State
 // StateConfig is the configuration for a state in the state machine.
 // In addition to just a name, a State contains a handler function, and a map of transitions.
 // When the flow is in a state, and an action is received, the handler function of that state is called.
+// If you are going to handle one action in a state, you may consider using the [TypedHandler] function to avoid type assertion.
+// If you are going to handle multiple actions in a state, you may consider using the [NewRouter] function create an action router.
 type StateConfig struct {
 	Handler     ActionHandler
 	Transitions Transitions
