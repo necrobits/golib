@@ -170,3 +170,7 @@ func (f *Flow) CurrentState() State {
 func (f *Flow) Data() FlowData {
 	return f.data
 }
+
+func (f *Flow) TransitionTable() TransitionTable {
+	return f.states
+}

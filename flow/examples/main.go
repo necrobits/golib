@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
 	"github.com/necrobits/golib/flow"
+	"github.com/necrobits/golib/flowviz"
 )
 
 const (
@@ -89,4 +91,7 @@ func main() {
 		fmt.Printf("Error: %s\n", err)
 	}
 	fmt.Printf("Snapshot: %s\n", string(b))
+	var buf bytes.Buffer
+	flowviz.CreateGraphvizForFlow(orderFlowCreator.transTable, flowviz.VizFormatDot, &buf)
+	fmt.Printf("Graphviz:\n%s\n", buf.String())
 }
