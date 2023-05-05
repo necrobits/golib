@@ -2,7 +2,7 @@ package flow
 
 import "fmt"
 
-type typedActionHandler[A Action] func(data FlowData, a A) (Event, FlowData, error)
+type typedActionHandler[D FlowData, A Action] func(data D, a A) (Event, D, error)
 type ActionRoutes map[ActionType]ActionHandler
 
 // TypedHandler is a helper function to create a typed action handler.
@@ -21,12 +21,18 @@ type ActionRoutes map[ActionType]ActionHandler
 //	func (f *OrderFlowCreator) HandlePayment(state flow.FlowData, a PaymentAction) (flow.Event, flow.FlowData, error) {
 //		//Do something...
 //	}
-func TypedHandler[A Action](f typedActionHandler[A]) ActionHandler {
+func TypedHandler[D FlowData, A Action](f typedActionHandler[D, A]) ActionHandler {
 	return func(data FlowData, a Action) (Event, FlowData, error) {
-		if a, ok := a.(A); ok {
-			return f(data, a)
+		var castedA A
+		var castedData D
+		var ok bool
+		if castedData, ok = data.(D); !ok {
+			return "", data, fmt.Errorf("invalid data type: %T", data)
 		}
-		return "", data, fmt.Errorf("invalid action type: %T", a)
+		if castedA, ok = a.(A); !ok {
+			return "", data, fmt.Errorf("invalid action type: %T", a)
+		}
+		return f(castedData, castedA)
 	}
 }
 
