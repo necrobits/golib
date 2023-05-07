@@ -87,7 +87,7 @@ func (f *OrderFlowCreator) NewFlow(orderId string, amount int) *flow.Flow {
 	return flow.New(flow.CreateFlowOpts{
 		ID:              "abc123",
 		Type:            "OrderFlow",
-		Data:            OrderInternalState{OrderID: orderId, TotalAmount: amount},
+		Data:            &OrderInternalState{OrderID: orderId, TotalAmount: amount},
 		InitialState:    AwaitingPayment,
 		TransitionTable: f.transTable,
 	})
@@ -97,26 +97,22 @@ func (f *OrderFlowCreator) NewFlowFromSnapshot(s *flow.Snapshot) *flow.Flow {
 	return flow.FromSnapshot(s, f.transTable)
 }
 
-func (f *OrderFlowCreator) HandleCancelation(state flow.FlowData, a CancelAction) (flow.Event, flow.FlowData, error) {
-	newState := state.(OrderInternalState)
-	newState.CanceledAt = time.Now().Unix()
-	return OrderCanceled, newState, nil
+func (f *OrderFlowCreator) HandleCancelation(state *OrderInternalState, a CancelAction) (flow.Event, *OrderInternalState, error) {
+	state.CanceledAt = time.Now().Unix()
+	return OrderCanceled, state, nil
 }
 
-func (f *OrderFlowCreator) HandlePayment(state flow.FlowData, payment PaymentAction) (flow.Event, flow.FlowData, error) {
-	state = state.(OrderInternalState)
-	if payment.Amount != state.(OrderInternalState).TotalAmount {
+func (f *OrderFlowCreator) HandlePayment(state *OrderInternalState, payment PaymentAction) (flow.Event, *OrderInternalState, error) {
+	if payment.Amount != state.TotalAmount {
 		return flow.NoEvent, nil, fmt.Errorf("payment amount does not match order total")
 	}
-	newState := state.(OrderInternalState)
-	newState.Paid = true
-	return OrderPaid, newState, nil
+	state.Paid = true
+	return OrderPaid, state, nil
 }
 
-func (f *OrderFlowCreator) HandleShipping(state flow.FlowData, a ShipOrderAction) (flow.Event, flow.FlowData, error) {
+func (f *OrderFlowCreator) HandleShipping(state *OrderInternalState, a ShipOrderAction) (flow.Event, *OrderInternalState, error) {
 	actionType := a.Type()
 	if actionType == ShipOrder {
-		state = state.(OrderInternalState)
 		return OrderShipped, state, nil
 	}
 	return flow.NoEvent, nil, fmt.Errorf("invalid action")
@@ -137,6 +133,8 @@ func main() {
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
 	}
+
+	fmt.Println("data", flow.MustCast[*OrderInternalState](orderFlow.Data()))
 
 	b, err := json.Marshal(orderFlow.ToSnapshot())
 	if err != nil {

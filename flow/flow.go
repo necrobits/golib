@@ -288,3 +288,11 @@ func logf(format string, a ...any) {
 func DebugMode(enabled bool) {
 	isDebugging = enabled
 }
+
+// MustCast casts the data to the specified type.
+func MustCast[D FlowData](data interface{}) D {
+	if d, ok := data.(D); ok {
+		return d
+	}
+	panic(fmt.Sprintf("cannot cast data to type: %T", data))
+}
