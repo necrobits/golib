@@ -1,7 +1,9 @@
 package flow
 
 import (
+	"database/sql"
 	"fmt"
+	"time"
 )
 
 const (
@@ -23,6 +25,8 @@ type Flow struct {
 	currentState   State
 	states         TransitionTable
 	defaultHandler ActionHandler
+	expireAt       time.Time
+	isCompleted    bool
 }
 
 // FlowData is the internal data of the flow. This can be anything.
@@ -55,6 +59,9 @@ type State string
 // InitialState is the initial state for the flow. It must be one of the states in TransitionTable.
 // TransitionTable contains the description of the state machine for the flow.
 // Handler is the default handler for the flow. If a state does not have a handler, this handler is used.
+// ExpireAt is the time at which the flow expires.
+// ExpireIn is the duration after which the flow expires.
+// If both ExpireAt and ExpireIn are set, ExpireIn is used.
 type CreateFlowOpts struct {
 	ID              string
 	Type            string
@@ -62,14 +69,18 @@ type CreateFlowOpts struct {
 	InitialState    State
 	TransitionTable TransitionTable
 	Handler         ActionHandler
+	ExpireAt        time.Time
+	ExpireIn        time.Duration
 }
 
 // Snapshot is used to persist the flow, and restore it later.
 type Snapshot struct {
-	ID           string   `json:"id"`
-	Type         string   `json:"type"`
-	Data         FlowData `json:"data"`
-	CurrentState State    `json:"current_state"`
+	ID           string       `json:"id"`
+	Type         string       `json:"type"`
+	Data         FlowData     `json:"data"`
+	CurrentState State        `json:"current_state"`
+	ExpireAt     sql.NullTime `json:"expire_at"`
+	IsCompleted  bool         `json:"is_completed"`
 }
 
 // ActionHandler is the function that handles an action.
@@ -92,12 +103,20 @@ type Transitions map[Event]State
 type StateConfig struct {
 	Handler     ActionHandler
 	Transitions Transitions
+	Final       bool
 }
 
 // HandleAction handles an action for the flow.
 // Everytime an action is handled, the flow may change its state.
 // This function is the only way to change the state of the flow.
 func (f *Flow) HandleAction(a Action) error {
+	if f.isCompleted {
+		return fmt.Errorf("flow is completed")
+	}
+	if f.IsExpired() {
+		return fmt.Errorf("flow already expired")
+	}
+
 	actionType := a.Type()
 	stateConfig, ok := f.states[f.currentState]
 	if !ok {
@@ -129,7 +148,12 @@ func (f *Flow) HandleAction(a Action) error {
 		f.logf("<Action>%s -> <Event>%s\n", actionType, inputEvent)
 		f.logf("Transition: %s -> %s\n", f.currentState, nextState)
 	}
-
+	if nextStateConfig, ok := f.states[nextState]; ok {
+		if nextStateConfig.Final {
+			f.isCompleted = true
+			f.logf("Flow completed\n")
+		}
+	}
 	f.data = nextData
 	f.currentState = nextState
 	return nil
@@ -144,6 +168,10 @@ func New(opts CreateFlowOpts) *Flow {
 		panic("InitialState cannot be empty")
 	}
 	logf("Creating a new Flow(%s), ID=%s\n", opts.Type, opts.ID)
+	if opts.ExpireIn > 0 {
+		opts.ExpireAt = time.Now().Add(opts.ExpireIn)
+	}
+
 	return &Flow{
 		id:             opts.ID,
 		flowType:       opts.Type,
@@ -151,6 +179,7 @@ func New(opts CreateFlowOpts) *Flow {
 		currentState:   opts.InitialState,
 		states:         opts.TransitionTable,
 		defaultHandler: opts.Handler,
+		expireAt:       opts.ExpireAt,
 	}
 }
 
@@ -161,18 +190,28 @@ func (f *Flow) ToSnapshot() Snapshot {
 		Type:         f.flowType,
 		Data:         f.data,
 		CurrentState: f.currentState,
+		ExpireAt: sql.NullTime{
+			Time:  f.expireAt,
+			Valid: !f.expireAt.IsZero(),
+		},
+		IsCompleted: f.isCompleted,
 	}
 }
 
 // FromSnapshot restores a flow from a Snapshot.
 func FromSnapshot(s *Snapshot, stateMap TransitionTable) *Flow {
-	return &Flow{
+	flow := Flow{
 		id:           s.ID,
 		flowType:     s.Type,
 		data:         s.Data,
 		currentState: s.CurrentState,
 		states:       stateMap,
+		isCompleted:  s.IsCompleted,
 	}
+	if err := s.ExpireAt.Scan(flow.expireAt); err != nil {
+		panic(err)
+	}
+	return &flow
 }
 
 // WithDefaultActionHandler sets the default action handler for the flow.
@@ -180,6 +219,11 @@ func FromSnapshot(s *Snapshot, stateMap TransitionTable) *Flow {
 // This is useful when you want to have a central place to handle all actions.
 func (f *Flow) WithDefaultActionHandler(handler ActionHandler) *Flow {
 	f.defaultHandler = handler
+	return f
+}
+
+func (f *Flow) WithExpiration(t time.Duration) *Flow {
+	f.expireAt = time.Now().Add(t)
 	return f
 }
 
@@ -201,6 +245,14 @@ func (f *Flow) Data() FlowData {
 
 func (f *Flow) TransitionTable() TransitionTable {
 	return f.states
+}
+
+func (f *Flow) IsCompleted() bool {
+	return f.isCompleted
+}
+
+func (f *Flow) IsExpired() bool {
+	return !f.expireAt.IsZero() && time.Now().After(f.expireAt)
 }
 
 func (f *Flow) logf(format string, a ...any) {

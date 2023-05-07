@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/necrobits/golib/flow"
@@ -75,6 +76,9 @@ func NewOrderFlowCreator() *OrderFlowCreator {
 				OrderShipped: OrderFulfilled,
 			},
 		},
+		OrderFulfilled: flow.StateConfig{
+			Final: true,
+		},
 	}
 	return f
 }
@@ -141,6 +145,6 @@ func main() {
 	fmt.Printf("Snapshot: %s\n", string(b))
 	var buf bytes.Buffer
 	flowviz.CreateGraphvizForFlow(orderFlowCreator.transTable, flowviz.VizFormatPNG, &buf)
-	//os.WriteFile("flow.png", buf.Bytes(), 0644)
+	os.WriteFile("flow.png", buf.Bytes(), 0644)
 	//fmt.Printf("Graphviz:\n%s\n", buf.String())
 }
