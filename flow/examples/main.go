@@ -90,6 +90,7 @@ func (f *OrderFlowCreator) NewFlow(orderId string, amount int) *flow.Flow {
 		Data:            &OrderInternalState{OrderID: orderId, TotalAmount: amount},
 		InitialState:    AwaitingPayment,
 		TransitionTable: f.transTable,
+		ExpireIn:        -time.Hour * 24 * 7,
 	})
 }
 
@@ -135,6 +136,7 @@ func main() {
 	}
 
 	fmt.Println("data", flow.MustCast[*OrderInternalState](orderFlow.Data()))
+	fmt.Printf("Is completed: %t\n", orderFlow.IsCompleted())
 
 	b, err := json.Marshal(orderFlow.ToSnapshot())
 	if err != nil {

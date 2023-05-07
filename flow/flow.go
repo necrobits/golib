@@ -255,6 +255,10 @@ func (f *Flow) IsExpired() bool {
 	return !f.expireAt.IsZero() && time.Now().After(f.expireAt)
 }
 
+func (f *Flow) ExpiresAt() time.Time {
+	return f.expireAt
+}
+
 func (f *Flow) logf(format string, a ...any) {
 	if isDebugging {
 		fmt.Printf("[%s %s]: ", f.flowType, f.id)
