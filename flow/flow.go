@@ -208,8 +208,8 @@ func FromSnapshot(s *Snapshot, stateMap TransitionTable) *Flow {
 		states:       stateMap,
 		isCompleted:  s.IsCompleted,
 	}
-	if err := s.ExpireAt.Scan(flow.expireAt); err != nil {
-		panic(err)
+	if s.ExpireAt.Valid {
+		flow.expireAt = s.ExpireAt.Time
 	}
 	return &flow
 }
