@@ -124,7 +124,10 @@ func main() {
 	orderFlowCreator := NewOrderFlowCreator()
 
 	orderFlow := orderFlowCreator.NewFlow("123", 100)
-
+	orderFlow.RegisterHook(OrderFulfilled, flow.TypedHook(func(data *OrderInternalState) error {
+		fmt.Printf("[HOOK] Order fulfilled: %s\n", data.OrderID)
+		return nil
+	}))
 	err := orderFlow.HandleAction(PaymentAction{Amount: 100})
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
