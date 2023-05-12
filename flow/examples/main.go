@@ -75,6 +75,7 @@ func NewOrderFlowCreator() *OrderFlowCreator {
 			Transitions: flow.Transitions{
 				OrderShipped: OrderFulfilled,
 			},
+			Autopass: true,
 		},
 		OrderFulfilled: flow.StateConfig{
 			Final: true,
@@ -111,12 +112,8 @@ func (f *OrderFlowCreator) HandlePayment(state *OrderInternalState, payment Paym
 	return OrderPaid, state, nil
 }
 
-func (f *OrderFlowCreator) HandleShipping(state *OrderInternalState, a ShipOrderAction) (flow.Event, *OrderInternalState, error) {
-	actionType := a.Type()
-	if actionType == ShipOrder {
-		return OrderShipped, state, nil
-	}
-	return flow.NoEvent, nil, fmt.Errorf("invalid action")
+func (f *OrderFlowCreator) HandleShipping(state *OrderInternalState, a flow.Action) (flow.Event, *OrderInternalState, error) {
+	return OrderShipped, state, nil
 }
 
 func main() {
@@ -133,11 +130,11 @@ func main() {
 		fmt.Printf("Error: %s\n", err)
 	}
 
-	err = orderFlow.HandleAction(ShipOrderAction{})
-	if err != nil {
-		fmt.Printf("Error: %s\n", err)
-	}
-
+	// Dont need to call this, since it's autopass
+	//err = orderFlow.HandleAction(ShipOrderAction{})
+	//if err != nil {
+	//	fmt.Printf("Error: %s\n", err)
+	//}
 	fmt.Println("data", flow.MustCast[*OrderInternalState](orderFlow.Data()))
 	fmt.Printf("Is completed: %t\n", orderFlow.IsCompleted())
 

@@ -43,6 +43,14 @@ type Action interface {
 // ActionType is the type of the action. It is used to identify the action in the TransitionTable.
 type ActionType string
 
+// AutoPassAction is a special action, which is used to handle automatic transitions.
+type AutopassAction struct {
+}
+
+func (a AutopassAction) Type() ActionType {
+	return "Autopass"
+}
+
 // Event is the input to the state machine. It is the output of the action handler.
 // Hence, it is only a string. The action handler is responsible for changing the data of the flow.
 // It causes the state machine to change its state.
@@ -113,6 +121,9 @@ type StateConfig struct {
 	Transitions Transitions
 	// Final indicates whether the state is a final state or not. If the Flow reachs a final state, it is completed.
 	Final bool
+	// Autopass indicates the state will automatically transition to the next state without any action.
+	// The handler function will be called with an [AutopassAction].
+	Autopass bool
 }
 
 // HandleAction handles an action for the flow.
@@ -173,6 +184,10 @@ func (f *Flow) HandleAction(a Action) error {
 	}
 	f.data = nextData
 	f.currentState = nextState
+	if nextStateConfig, ok := f.states[nextState]; ok && nextStateConfig.Autopass {
+		f.logf("Reached an autopass state: %s\n", nextState)
+		return f.HandleAction(AutopassAction{})
+	}
 	return nil
 }
 
