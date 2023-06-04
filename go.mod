@@ -2,9 +2,7 @@ module github.com/necrobits/x
 
 go 1.19
 
-require (
-	github.com/goccy/go-graphviz v0.1.1
-)
+require github.com/goccy/go-graphviz v0.1.1
 
 require (
 	github.com/fogleman/gg v1.3.0 // indirect
