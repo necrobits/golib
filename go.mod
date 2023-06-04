@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/goccy/go-graphviz v0.1.1
-	github.com/necrobits/golib v0.0.0-20230512142954-20d510475a6b
 )
 
 require (

@@ -5,7 +5,7 @@ import (
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
-	"github.com/necrobits/golib/flow"
+	"github.com/necrobits/x/flow"
 )
 
 const (

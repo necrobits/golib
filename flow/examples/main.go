@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/necrobits/golib/flow"
-	"github.com/necrobits/golib/flowviz"
+	"github.com/necrobits/x/flow"
+	"github.com/necrobits/x/flowviz"
 )
 
 const (
