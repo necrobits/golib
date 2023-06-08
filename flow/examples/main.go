@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -99,12 +100,12 @@ func (f *OrderFlowCreator) NewFlowFromSnapshot(s *flow.Snapshot) *flow.Flow {
 	return flow.FromSnapshot(s, f.transTable)
 }
 
-func (f *OrderFlowCreator) HandleCancelation(state *OrderInternalState, a CancelAction) (flow.Event, *OrderInternalState, error) {
+func (f *OrderFlowCreator) HandleCancelation(ctx context.Context, state *OrderInternalState, a CancelAction) (flow.Event, *OrderInternalState, error) {
 	state.CanceledAt = time.Now().Unix()
 	return OrderCanceled, state, nil
 }
 
-func (f *OrderFlowCreator) HandlePayment(state *OrderInternalState, payment PaymentAction) (flow.Event, *OrderInternalState, error) {
+func (f *OrderFlowCreator) HandlePayment(ctx context.Context, state *OrderInternalState, payment PaymentAction) (flow.Event, *OrderInternalState, error) {
 	if payment.Amount != state.TotalAmount {
 		return flow.NoEvent, nil, fmt.Errorf("payment amount does not match order total")
 	}
@@ -112,12 +113,13 @@ func (f *OrderFlowCreator) HandlePayment(state *OrderInternalState, payment Paym
 	return OrderPaid, state, nil
 }
 
-func (f *OrderFlowCreator) HandleShipping(state *OrderInternalState, a flow.Action) (flow.Event, *OrderInternalState, error) {
+func (f *OrderFlowCreator) HandleShipping(ctx context.Context, state *OrderInternalState, a flow.Action) (flow.Event, *OrderInternalState, error) {
 	return OrderShipped, state, nil
 }
 
 func main() {
 	flow.DebugMode(true)
+	ctx := context.Background()
 	orderFlowCreator := NewOrderFlowCreator()
 
 	orderFlow := orderFlowCreator.NewFlow("123", 100)
@@ -125,7 +127,7 @@ func main() {
 		fmt.Printf("[HOOK] Order fulfilled: %s\n", data.OrderID)
 		return nil
 	}))
-	err := orderFlow.HandleAction(PaymentAction{Amount: 100})
+	err := orderFlow.HandleAction(ctx, PaymentAction{Amount: 100})
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
 	}

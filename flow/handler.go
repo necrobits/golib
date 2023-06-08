@@ -1,8 +1,11 @@
 package flow
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
-type typedActionHandler[D FlowData, A Action] func(data D, a A) (Event, D, error)
+type typedActionHandler[D FlowData, A Action] func(ctx context.Context, data D, a A) (Event, D, error)
 type ActionRoutes map[ActionType]ActionHandler
 
 // TypedHandler is a helper function to create a typed action handler.
@@ -10,7 +13,7 @@ type ActionRoutes map[ActionType]ActionHandler
 // For example:
 // Instead of writing:
 //
-//	func (f *OrderFlowCreator) HandleCancelation(state flow.FlowData, a Action) (flow.Event, flow.FlowData, error) {
+//	func (f *OrderFlowCreator) HandleCancelation(ctx context.Context, state flow.FlowData, a Action) (flow.Event, flow.FlowData, error) {
 //		if a, ok := a.(PaymentAction); ok {
 //			//Do something...
 //		}
@@ -18,11 +21,11 @@ type ActionRoutes map[ActionType]ActionHandler
 //
 // You can write like this and access the action directly without type assertions:
 //
-//	func (f *OrderFlowCreator) HandlePayment(state flow.FlowData, a PaymentAction) (flow.Event, flow.FlowData, error) {
+//	func (f *OrderFlowCreator) HandlePayment(ctx context.Context, state flow.FlowData, a PaymentAction) (flow.Event, flow.FlowData, error) {
 //		//Do something...
 //	}
 func TypedHandler[D FlowData, A Action](f typedActionHandler[D, A]) ActionHandler {
-	return func(data FlowData, a Action) (Event, FlowData, error) {
+	return func(ctx context.Context, data FlowData, a Action) (Event, FlowData, error) {
 		var castedA A
 		var castedData D
 		var ok bool
@@ -32,7 +35,7 @@ func TypedHandler[D FlowData, A Action](f typedActionHandler[D, A]) ActionHandle
 		if castedA, ok = a.(A); !ok {
 			return "", data, fmt.Errorf("invalid action type: %T", a)
 		}
-		return f(castedData, castedA)
+		return f(ctx, castedData, castedA)
 	}
 }
 
@@ -66,9 +69,9 @@ func NewRouter(routes ActionRoutes) *ActionRouter {
 
 // Handle handles an action using the router.
 // You should not call this method directly, instead you should use the router as a handler.
-func (r *ActionRouter) Handle(data FlowData, a Action) (Event, FlowData, error) {
+func (r *ActionRouter) Handle(ctx context.Context, data FlowData, a Action) (Event, FlowData, error) {
 	if handler, ok := r.routes[a.Type()]; ok {
-		return handler(data, a)
+		return handler(ctx, data, a)
 	}
 	return "", data, fmt.Errorf("no handler for action type: %s", a.Type())
 }
@@ -88,7 +91,7 @@ func (r *ActionRouter) AddRoutes(routes ActionRoutes) {
 // ToHandler converts the router to a single handler.
 // You should call this method after adding all the routes to convert the router to a handler.
 func (r *ActionRouter) ToHandler() ActionHandler {
-	return func(data FlowData, a Action) (Event, FlowData, error) {
-		return r.Handle(data, a)
+	return func(ctx context.Context, data FlowData, a Action) (Event, FlowData, error) {
+		return r.Handle(ctx, data, a)
 	}
 }

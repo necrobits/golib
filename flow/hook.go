@@ -1,6 +1,9 @@
 package flow
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // preTransitionHookTable is a map of pre-transition hooks.
 type preTransitionHookTable map[State]preTransitionHook
@@ -8,7 +11,7 @@ type preTransitionHookTable map[State]preTransitionHook
 // preTransitionHook is the function that is called before the flow changes its state.
 // It is used to perform some actions before the state changes.
 // If the error is not nil, the flow will remain in the same state.
-type preTransitionHook func(data FlowData) error
+type preTransitionHook func(ctx context.Context, data FlowData) error
 
 // RegisterHook registers a pre-transition hook for a state.
 // The hook will be called before the flow transitions to the state.
@@ -33,7 +36,7 @@ func (f *Flow) getPretransitionHook(state State) preTransitionHook {
 
 // TypedHook creates a pre-transition hook for a specific data type.
 func TypedHook[D FlowData](hook func(D) error) preTransitionHook {
-	return func(data FlowData) error {
+	return func(ctx context.Context, data FlowData) error {
 		var castedData D
 		var ok bool
 		if castedData, ok = data.(D); !ok {

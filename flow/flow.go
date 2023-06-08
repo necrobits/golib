@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -104,7 +105,7 @@ type Snapshot struct {
 //
 // If the error is not nil, no event will be sent to the state machine, and the flow will remain in the same state.
 // If the error is nil, the flow will change its state according to the the transition table.
-type ActionHandler func(data FlowData, a Action) (Event, FlowData, error)
+type ActionHandler func(ctx context.Context, data FlowData, a Action) (Event, FlowData, error)
 
 // Transitions is a map, describing the transition from a state to the next state.
 type Transitions map[Event]State
@@ -129,7 +130,7 @@ type StateConfig struct {
 // HandleAction handles an action for the flow.
 // Everytime an action is handled, the flow may change its state.
 // This function is the only way to change the state of the flow.
-func (f *Flow) HandleAction(a Action) error {
+func (f *Flow) HandleAction(ctx context.Context, a Action) error {
 	if f.completed {
 		return fmt.Errorf("flow is completed")
 	}
@@ -151,7 +152,7 @@ func (f *Flow) HandleAction(a Action) error {
 		actionHandler = f.defaultHandler
 	}
 	f.logf("Incoming action: %s\n", actionType)
-	inputEvent, nextData, err := actionHandler(f.data, a)
+	inputEvent, nextData, err := actionHandler(ctx, f.data, a)
 	if err != nil {
 		f.logf("Error: %v\n", err)
 		return err
@@ -169,7 +170,7 @@ func (f *Flow) HandleAction(a Action) error {
 		hook := f.getPretransitionHook(nextState)
 		if hook != nil {
 			f.logf("Calling pre-transition hook for state: %s\n", nextState)
-			if err := hook(nextData); err != nil {
+			if err := hook(ctx, nextData); err != nil {
 				f.logf("Error during pre-transition hook: %v\n", err)
 				return err
 			}
@@ -186,7 +187,7 @@ func (f *Flow) HandleAction(a Action) error {
 	f.currentState = nextState
 	if nextStateConfig, ok := f.states[nextState]; ok && nextStateConfig.Autopass {
 		f.logf("Reached an autopass state: %s\n", nextState)
-		return f.HandleAction(AutopassAction{})
+		return f.HandleAction(ctx, AutopassAction{})
 	}
 	return nil
 }
