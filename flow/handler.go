@@ -39,7 +39,7 @@ func TypedHandler[D FlowData, A Action](f typedActionHandler[D, A]) ActionHandle
 	}
 }
 
-// ActionRouter is a helper to route actions to handlers.
+// actionRouter is a helper to route actions to handlers.
 // It is useful when you want to handle multiple action types in a single handler.
 // You can create multiple typed handlers and add them to the router, then use the router as a single handler.
 // For example:
@@ -57,19 +57,19 @@ func TypedHandler[D FlowData, A Action](f typedActionHandler[D, A]) ActionHandle
 //			},
 //		},
 //	}
-type ActionRouter struct {
+type actionRouter struct {
 	routes ActionRoutes
 }
 
 // NewRouter creates a new ActionRouter.
 // You can also add routes to the router later using AddRoute or AddRoutes.
-func NewRouter(routes ActionRoutes) *ActionRouter {
-	return &ActionRouter{routes: routes}
+func NewRouter(routes ActionRoutes) *actionRouter {
+	return &actionRouter{routes: routes}
 }
 
 // Handle handles an action using the router.
 // You should not call this method directly, instead you should use the router as a handler.
-func (r *ActionRouter) Handle(ctx context.Context, data FlowData, a Action) (Event, FlowData, error) {
+func (r *actionRouter) Handle(ctx context.Context, data FlowData, a Action) (Event, FlowData, error) {
 	if handler, ok := r.routes[a.Type()]; ok {
 		return handler(ctx, data, a)
 	}
@@ -77,12 +77,12 @@ func (r *ActionRouter) Handle(ctx context.Context, data FlowData, a Action) (Eve
 }
 
 // AddRoute adds a route to the router.
-func (r *ActionRouter) AddRoute(actionType ActionType, handler ActionHandler) {
+func (r *actionRouter) AddRoute(actionType ActionType, handler ActionHandler) {
 	r.routes[actionType] = handler
 }
 
 // AddRoutes adds multiple routes to the router.
-func (r *ActionRouter) AddRoutes(routes ActionRoutes) {
+func (r *actionRouter) AddRoutes(routes ActionRoutes) {
 	for actionType, handler := range routes {
 		r.routes[actionType] = handler
 	}
@@ -90,7 +90,7 @@ func (r *ActionRouter) AddRoutes(routes ActionRoutes) {
 
 // ToHandler converts the router to a single handler.
 // You should call this method after adding all the routes to convert the router to a handler.
-func (r *ActionRouter) ToHandler() ActionHandler {
+func (r *actionRouter) ToHandler() ActionHandler {
 	return func(ctx context.Context, data FlowData, a Action) (Event, FlowData, error) {
 		return r.Handle(ctx, data, a)
 	}
