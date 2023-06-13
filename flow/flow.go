@@ -45,11 +45,23 @@ type Action interface {
 type ActionType string
 
 // AutoPassAction is a special action, which is used to handle automatic transitions.
-type AutopassAction struct {
+type autopassAction struct {
 }
 
-func (a AutopassAction) Type() ActionType {
+func (a autopassAction) Type() ActionType {
 	return "Autopass"
+}
+
+type nilAction struct {
+}
+
+func (a nilAction) Type() ActionType {
+	return "Nil"
+}
+
+// NilAction is a special action, which can be used when you don't have any specific action.
+func NilAction() Action {
+	return nilAction{}
 }
 
 // Event is the input to the state machine. It is the output of the action handler.
@@ -187,7 +199,7 @@ func (f *Flow) HandleAction(ctx context.Context, a Action) error {
 	f.currentState = nextState
 	if nextStateConfig, ok := f.states[nextState]; ok && nextStateConfig.Autopass {
 		f.logf("Reached an autopass state: %s\n", nextState)
-		return f.HandleAction(ctx, AutopassAction{})
+		return f.HandleAction(ctx, autopassAction{})
 	}
 	return nil
 }
