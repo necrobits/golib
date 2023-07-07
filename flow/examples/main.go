@@ -137,7 +137,7 @@ func main() {
 	flow.HookRegistry().RegisterPostTransition("OrderFlow", AwaitingShipping, flow.TypedHook(func(data *OrderInternalState) {
 		fmt.Printf("[GLOBAL POST HOOK] Paid, awaiting shipping: %s\n", data.OrderID)
 	}))
-	flow.HookRegistry().RegisterCompletion("OrderFlow", OrderFulfilled, flow.TypedHook(func(data *OrderInternalState) {
+	flow.HookRegistry().RegisterCompletion("OrderFlow", flow.TypedHook(func(data *OrderInternalState) {
 		fmt.Printf("[GLOBAL COMPLETION HOOK] Order fulfilled: %s\n", data.OrderID)
 	}))
 	err := orderFlow.HandleAction(ctx, PaymentAction{Amount: 100})

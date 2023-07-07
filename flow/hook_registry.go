@@ -57,7 +57,7 @@ func (r *hookRegistry) RegisterPostTransition(flowType FlowType, state State, ho
 	r.postTransitionHooks = addHookToRegistry[silentHook](r.postTransitionHooks, flowType, state, hook)
 }
 
-func (r *hookRegistry) RegisterCompletion(flowType FlowType, state State, hook silentHook) {
+func (r *hookRegistry) RegisterCompletion(flowType FlowType, hook silentHook) {
 	if _, ok := r.completionHooks[flowType]; !ok {
 		r.completionHooks[flowType] = []silentHook{}
 	}
