@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/necrobits/x/flow"
+	"github.com/necrobits/x/flow/flowregistry"
 	"github.com/necrobits/x/flowviz"
 )
 
@@ -123,9 +124,22 @@ func main() {
 	orderFlowCreator := NewOrderFlowCreator()
 
 	orderFlow := orderFlowCreator.NewFlow("123", 100)
-	orderFlow.RegisterHook(OrderFulfilled, flow.TypedHook(func(data *OrderInternalState) error {
-		fmt.Printf("[HOOK] Order fulfilled: %s\n", data.OrderID)
+	orderFlow.RegisterPreTransition(AwaitingShipping, flow.TypedPreHook(func(data *OrderInternalState) error {
+		fmt.Printf("[PRE HOOK] Paid, awaiting shipping: %s\n", data.OrderID)
 		return nil
+	}))
+	orderFlow.RegisterPostTransition(OrderFulfilled, flow.TypedHook(func(data *OrderInternalState) {
+		fmt.Printf("[POST HOOK] Order fulfilled: %s\n", data.OrderID)
+	}))
+	orderFlow.RegisterCompletionHook(OrderFulfilled, flow.TypedHook(func(data *OrderInternalState) {
+		fmt.Printf("[COMPLETION HOOK] Order fulfilled: %s\n", data.OrderID)
+	}))
+	flowregistry.Global().Register("OrderFlow", &OrderInternalState{})
+	flow.HookRegistry().RegisterPostTransition("OrderFlow", AwaitingShipping, flow.TypedHook(func(data *OrderInternalState) {
+		fmt.Printf("[GLOBAL POST HOOK] Paid, awaiting shipping: %s\n", data.OrderID)
+	}))
+	flow.HookRegistry().RegisterCompletion("OrderFlow", OrderFulfilled, flow.TypedHook(func(data *OrderInternalState) {
+		fmt.Printf("[GLOBAL COMPLETION HOOK] Order fulfilled: %s\n", data.OrderID)
 	}))
 	err := orderFlow.HandleAction(ctx, PaymentAction{Amount: 100})
 	if err != nil {

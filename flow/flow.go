@@ -20,19 +20,22 @@ var (
 // It contains the internal data of the flow, and the current state.
 // It also contains the transition table, which describes the state machine.
 type Flow struct {
-	id             string
-	flowType       string
-	data           FlowData
-	currentState   State
-	states         TransitionTable
-	defaultHandler ActionHandler
-	expiresAt      time.Time
-	completed      bool
-	hookTable      preTransitionHookTable
+	id              string
+	flowType        FlowType
+	data            FlowData
+	currentState    State
+	states          TransitionTable
+	defaultHandler  ActionHandler
+	expiresAt       time.Time
+	completed       bool
+	hookTable       preTransitionHookTable
+	postHookTable   silentHookTable
+	completionHooks []silentHook
 }
 
 // FlowData is the internal data of the flow. This can be anything.
 type FlowData interface{}
+type FlowType string
 
 type TransitionTable map[State]StateConfig
 
@@ -78,7 +81,7 @@ type CreateFlowOpts struct {
 	// ID is the unique identifier for the flow.
 	ID string
 	// Type is the type of the flow. This is used to identify the flow and restore it from a snapshot.
-	Type string
+	Type FlowType
 	// Data is the initial internal data for the flow.
 	Data FlowData
 	// InitialState is the initial state for the flow. It must be one of the states in TransitionTable.
@@ -147,7 +150,7 @@ func (f *Flow) HandleAction(ctx context.Context, a Action) error {
 		return fmt.Errorf("flow is completed")
 	}
 	if f.IsExpired() {
-		return fmt.Errorf("flow already expired")
+		return fmt.Errorf("flow expired")
 	}
 
 	actionType := a.Type()
@@ -179,29 +182,77 @@ func (f *Flow) HandleAction(ctx context.Context, a Action) error {
 			return fmt.Errorf("no transition found for event: %s", actionType)
 		}
 		f.logf("<Action>%s -> <Event>%s\n", actionType, inputEvent)
-		hook := f.getPretransitionHook(nextState)
-		if hook != nil {
-			f.logf("Calling pre-transition hook for state: %s\n", nextState)
-			if err := hook(ctx, nextData); err != nil {
-				f.logf("Error during pre-transition hook: %v\n", err)
-				return err
-			}
+
+		err := f.runPreTransitionHooks(ctx, nextData, nextState)
+		if err != nil {
+			return err
 		}
 		f.logf("Transition: %s -> %s\n", f.currentState, nextState)
 	}
+
+	f.data = nextData
+	f.currentState = nextState
+	f.runPostTransitionHooks(ctx, nextData, nextState)
+
 	if nextStateConfig, ok := f.states[nextState]; ok {
 		if nextStateConfig.Final {
 			f.completed = true
+			f.runCompletionHooks(ctx, nextData)
 			f.logf("Flow completed\n")
 		}
 	}
-	f.data = nextData
-	f.currentState = nextState
+
 	if nextStateConfig, ok := f.states[nextState]; ok && nextStateConfig.Autopass {
 		f.logf("Reached an autopass state: %s\n", nextState)
 		return f.HandleAction(ctx, autopassAction{})
 	}
 	return nil
+}
+
+func (f *Flow) runPreTransitionHooks(ctx context.Context, data FlowData, nextState State) error {
+	hook := f.composePreTransitionHooks(nextState)
+	if hook != nil {
+		f.logf("Calling pre-transition hook for state: %s\n", nextState)
+		if err := hook(ctx, data); err != nil {
+			f.logf("Error during pre-transition hook: %v\n", err)
+			return err
+		}
+	}
+	registryHook := globalHookRegistry.composePreTransitions(f.flowType, nextState)
+	if registryHook != nil {
+		f.logf("Calling pre-transition hook from global registry for state: %s\n", nextState)
+		if err := registryHook(ctx, data); err != nil {
+			f.logf("Error during pre-transition hook from registry: %v\n", err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *Flow) runPostTransitionHooks(ctx context.Context, data FlowData, nextState State) {
+	hook := f.composePostTransitionHooks(nextState)
+	if hook != nil {
+		f.logf("Calling post-transition hook for state: %s\n", nextState)
+		hook(ctx, data)
+	}
+	registryHook := globalHookRegistry.composePostTransitionHooks(f.flowType, nextState)
+	if registryHook != nil {
+		f.logf("Calling post-transition hook from global registry for state: %s\n", nextState)
+		registryHook(ctx, data)
+	}
+}
+
+func (f *Flow) runCompletionHooks(ctx context.Context, data FlowData) {
+	hook := f.composeCompletionHooks()
+	if hook != nil {
+		f.logf("Calling completion hook\n")
+		hook(ctx, data)
+	}
+	registryHook := globalHookRegistry.composeCompletionHooks(f.flowType)
+	if registryHook != nil {
+		f.logf("Calling completion hook from global registry\n")
+		registryHook(ctx, data)
+	}
 }
 
 // New creates a new Flow.
@@ -232,7 +283,7 @@ func New(opts CreateFlowOpts) *Flow {
 func (f *Flow) ToSnapshot() Snapshot {
 	return Snapshot{
 		ID:           f.id,
-		Type:         f.flowType,
+		Type:         string(f.flowType),
 		Data:         f.data,
 		CurrentState: f.currentState,
 		ExpiresAt: sql.NullTime{
@@ -247,7 +298,7 @@ func (f *Flow) ToSnapshot() Snapshot {
 func FromSnapshot(s *Snapshot, stateMap TransitionTable) *Flow {
 	flow := Flow{
 		id:           s.ID,
-		flowType:     s.Type,
+		flowType:     FlowType(s.Type),
 		data:         s.Data,
 		currentState: s.CurrentState,
 		states:       stateMap,
@@ -271,7 +322,7 @@ func (f *Flow) ID() string {
 	return f.id
 }
 
-func (f *Flow) Type() string {
+func (f *Flow) Type() FlowType {
 	return f.flowType
 }
 
