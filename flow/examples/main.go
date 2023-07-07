@@ -133,7 +133,7 @@ func main() {
 	orderFlow.RegisterCompletionHook(OrderFulfilled, flow.TypedHook(func(data *OrderInternalState) {
 		fmt.Printf("[COMPLETION HOOK] Order fulfilled: %s\n", data.OrderID)
 	}))
-	flowregistry.Global().Register("OrderFlow", &OrderInternalState{})
+	flowregistry.Global().Register("OrderFlow", OrderInternalState{})
 	flow.HookRegistry().RegisterPostTransition("OrderFlow", AwaitingShipping, flow.TypedHook(func(data *OrderInternalState) {
 		fmt.Printf("[GLOBAL POST HOOK] Paid, awaiting shipping: %s\n", data.OrderID)
 	}))
@@ -161,5 +161,11 @@ func main() {
 	var buf bytes.Buffer
 	flowviz.CreateGraphvizForFlow(orderFlowCreator.transTable, flowviz.VizFormatPNG, &buf)
 	os.WriteFile("flow.png", buf.Bytes(), 0644)
+
+	snapshot2, err := flowregistry.Global().DecodeSnapshot(snapshot)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+	}
+	fmt.Printf("Snapshot2: %+v\n", snapshot2.Data.(*OrderInternalState))
 	//fmt.Printf("Graphviz:\n%s\n", buf.String())
 }

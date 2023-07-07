@@ -3,6 +3,7 @@ package flowregistry
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/necrobits/x/flow"
 )
@@ -40,8 +41,9 @@ func (r *DataRegistry) Get(flowType flow.FlowType) flow.FlowData {
 
 func (r *DataRegistry) Unmarshal(flowType flow.FlowType, flowDataJson json.RawMessage) (flow.FlowData, error) {
 	if data, ok := r.registryData[flowType]; ok {
-		err := json.Unmarshal(flowDataJson, &data)
-		return data, err
+		reflectedData := reflect.New(reflect.TypeOf(data)).Interface()
+		err := json.Unmarshal(flowDataJson, reflectedData)
+		return reflectedData, err
 	}
 	return nil, fmt.Errorf("flow type %s not registered", flowType)
 }
