@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -154,11 +153,11 @@ func main() {
 	fmt.Println("data", flow.MustCast[*OrderInternalState](orderFlow.Data()))
 	fmt.Printf("Is completed: %t\n", orderFlow.IsCompleted())
 
-	b, err := json.Marshal(orderFlow.ToSnapshot())
+	snapshot, err := orderFlow.ToSnapshot()
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
 	}
-	fmt.Printf("Snapshot: %s\n", string(b))
+	fmt.Printf("Snapshot: %s\n", string(snapshot.EncodedData))
 	var buf bytes.Buffer
 	flowviz.CreateGraphvizForFlow(orderFlowCreator.transTable, flowviz.VizFormatPNG, &buf)
 	os.WriteFile("flow.png", buf.Bytes(), 0644)
