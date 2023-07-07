@@ -46,7 +46,7 @@ func (r *DataRegistry) Unmarshal(flowType flow.FlowType, flowDataJson json.RawMe
 	return nil, fmt.Errorf("flow type %s not registered", flowType)
 }
 
-func (r *DataRegistry) DecodeSnapshot(snapshot flow.Snapshot) (flow.Snapshot, error) {
+func (r *DataRegistry) DecodeSnapshot(snapshot *flow.Snapshot) (*flow.Snapshot, error) {
 	flowType := flow.FlowType(snapshot.Type)
 	flowData, err := r.Unmarshal(flowType, snapshot.EncodedData)
 	if err != nil {

@@ -283,12 +283,12 @@ func New(opts CreateFlowOpts) *Flow {
 }
 
 // ToSnapshot converts the flow to a Snapshot to be persisted.
-func (f *Flow) ToSnapshot() (Snapshot, error) {
+func (f *Flow) ToSnapshot() (*Snapshot, error) {
 	dataJson, err := json.Marshal(f.data)
 	if err != nil {
-		return Snapshot{}, err
+		return nil, err
 	}
-	return Snapshot{
+	return &Snapshot{
 		ID:           f.id,
 		Type:         string(f.flowType),
 		Data:         f.data,
