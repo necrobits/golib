@@ -90,6 +90,9 @@ func (f *Flow) composePostTransitionHooks(state State) silentHook {
 }
 
 func (f *Flow) composeCompletionHooks() silentHook {
+	if f.completionHooks == nil {
+		return nil
+	}
 	return composeSilentHooks(f.completionHooks)
 }
 
