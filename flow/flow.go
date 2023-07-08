@@ -31,7 +31,7 @@ type Flow struct {
 	completed       bool
 	hookTable       preTransitionHookTable
 	postHookTable   silentHookTable
-	completionHooks []silentHook
+	completionHooks []silentHookFn
 }
 
 // FlowData is the internal data of the flow. This can be anything.
@@ -302,8 +302,20 @@ func (f *Flow) ToSnapshot() (*Snapshot, error) {
 	}, nil
 }
 
+func FromSnapShot(ctx context.Context, s *Snapshot, stateMap TransitionTable) (*Flow, error) {
+	f := UnhydratedFromSnapshot(s, stateMap)
+	hydrationFn := HookRegistry().composeHydrationHooks(f.flowType)
+	if hydrationFn != nil {
+		var err error
+		if f.data, err = hydrationFn(ctx, f.data); err != nil {
+			return nil, err
+		}
+	}
+	return f, nil
+}
+
 // FromSnapshot restores a flow from a Snapshot.
-func FromSnapshot(s *Snapshot, stateMap TransitionTable) *Flow {
+func UnhydratedFromSnapshot(s *Snapshot, stateMap TransitionTable) *Flow {
 	flow := Flow{
 		id:           s.ID,
 		flowType:     FlowType(s.Type),

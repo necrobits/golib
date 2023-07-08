@@ -5,10 +5,12 @@ var (
 )
 
 type hookRegistryType[T any] map[FlowType]map[State][]T
-type preTransitionRegistry hookRegistryType[preTransitionHook]
-type postTransitionRegistry hookRegistryType[silentHook]
-type completionRegistry map[FlowType][]silentHook
+type preTransitionRegistry hookRegistryType[hookFn]
+type postTransitionRegistry hookRegistryType[silentHookFn]
+type hydrationRegistry map[FlowType][]hydrationHookFn
+type completionRegistry map[FlowType][]silentHookFn
 type hookRegistry struct {
+	hydrationHooks      hydrationRegistry
 	preTransitionHooks  preTransitionRegistry
 	postTransitionHooks postTransitionRegistry
 	completionHooks     completionRegistry
@@ -16,13 +18,21 @@ type hookRegistry struct {
 
 func newHookRegistry() *hookRegistry {
 	return &hookRegistry{
+		hydrationHooks:      make(hydrationRegistry),
 		preTransitionHooks:  make(preTransitionRegistry),
 		postTransitionHooks: make(postTransitionRegistry),
 		completionHooks:     make(completionRegistry),
 	}
 }
 
-func (r *hookRegistry) composePreTransitions(flowType FlowType, state State) preTransitionHook {
+func (r *hookRegistry) composeHydrationHooks(flowType FlowType) hydrationHookFn {
+	if _, ok := r.hydrationHooks[flowType]; !ok {
+		return nil
+	}
+	return composeHydrationHooks(r.hydrationHooks[flowType])
+}
+
+func (r *hookRegistry) composePreTransitions(flowType FlowType, state State) hookFn {
 	if _, ok := r.preTransitionHooks[flowType]; !ok {
 		return nil
 	}
@@ -32,7 +42,7 @@ func (r *hookRegistry) composePreTransitions(flowType FlowType, state State) pre
 	return composePreTransitionHooks(r.preTransitionHooks[flowType][state])
 }
 
-func (r *hookRegistry) composePostTransitionHooks(flowType FlowType, state State) silentHook {
+func (r *hookRegistry) composePostTransitionHooks(flowType FlowType, state State) silentHookFn {
 	if _, ok := r.postTransitionHooks[flowType]; !ok {
 		return nil
 	}
@@ -42,24 +52,31 @@ func (r *hookRegistry) composePostTransitionHooks(flowType FlowType, state State
 	return composeSilentHooks(r.postTransitionHooks[flowType][state])
 }
 
-func (r *hookRegistry) composeCompletionHooks(flowType FlowType) silentHook {
+func (r *hookRegistry) composeCompletionHooks(flowType FlowType) silentHookFn {
 	if _, ok := r.completionHooks[flowType]; !ok {
 		return nil
 	}
 	return composeSilentHooks(r.completionHooks[flowType])
 }
 
-func (r *hookRegistry) RegisterPreTransition(flowType FlowType, state State, hook preTransitionHook) {
-	r.preTransitionHooks = addHookToRegistry[preTransitionHook](r.preTransitionHooks, flowType, state, hook)
+func (r *hookRegistry) RegisterHydration(flowType FlowType, hook hydrationHookFn) {
+	if _, ok := r.hydrationHooks[flowType]; !ok {
+		r.hydrationHooks[flowType] = []hydrationHookFn{}
+	}
+	r.hydrationHooks[flowType] = append(r.hydrationHooks[flowType], hook)
 }
 
-func (r *hookRegistry) RegisterPostTransition(flowType FlowType, state State, hook silentHook) {
-	r.postTransitionHooks = addHookToRegistry[silentHook](r.postTransitionHooks, flowType, state, hook)
+func (r *hookRegistry) RegisterPreTransition(flowType FlowType, state State, hook hookFn) {
+	r.preTransitionHooks = addHookToRegistry[hookFn](r.preTransitionHooks, flowType, state, hook)
 }
 
-func (r *hookRegistry) RegisterCompletion(flowType FlowType, hook silentHook) {
+func (r *hookRegistry) RegisterPostTransition(flowType FlowType, state State, hook silentHookFn) {
+	r.postTransitionHooks = addHookToRegistry[silentHookFn](r.postTransitionHooks, flowType, state, hook)
+}
+
+func (r *hookRegistry) RegisterCompletion(flowType FlowType, hook silentHookFn) {
 	if _, ok := r.completionHooks[flowType]; !ok {
-		r.completionHooks[flowType] = []silentHook{}
+		r.completionHooks[flowType] = []silentHookFn{}
 	}
 	r.completionHooks[flowType] = append(r.completionHooks[flowType], hook)
 }

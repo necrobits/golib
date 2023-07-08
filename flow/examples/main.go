@@ -96,8 +96,8 @@ func (f *OrderFlowCreator) NewFlow(orderId string, amount int) *flow.Flow {
 	})
 }
 
-func (f *OrderFlowCreator) NewFlowFromSnapshot(s *flow.Snapshot) *flow.Flow {
-	return flow.FromSnapshot(s, f.transTable)
+func (f *OrderFlowCreator) NewFlowFromSnapshot(s *flow.Snapshot) (*flow.Flow, error) {
+	return flow.FromSnapShot(context.Background(), s, f.transTable)
 }
 
 func (f *OrderFlowCreator) HandleCancelation(ctx context.Context, state *OrderInternalState, a CancelAction) (flow.Event, *OrderInternalState, error) {
@@ -167,5 +167,6 @@ func main() {
 		fmt.Printf("Error: %s\n", err)
 	}
 	fmt.Printf("Snapshot2: %+v\n", snapshot2.Data.(*OrderInternalState))
+
 	//fmt.Printf("Graphviz:\n%s\n", buf.String())
 }
