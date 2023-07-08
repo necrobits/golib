@@ -131,3 +131,14 @@ func TypedHook[D FlowData](hook func(D)) silentHookFn {
 		hook(castedData)
 	}
 }
+
+func TypedHydrationHook[D FlowData](hook func(D) (D, error)) hydrationHookFn {
+	return func(ctx context.Context, data FlowData) (FlowData, error) {
+		var castedData D
+		var ok bool
+		if castedData, ok = data.(D); !ok {
+			return data, fmt.Errorf("invalid data type: %T", data)
+		}
+		return hook(castedData)
+	}
+}
