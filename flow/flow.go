@@ -302,8 +302,8 @@ func (f *Flow) ToSnapshot() (*Snapshot, error) {
 	}, nil
 }
 
-func FromSnapShot(ctx context.Context, s *Snapshot, stateMap TransitionTable) (*Flow, error) {
-	f := UnhydratedFromSnapshot(s, stateMap)
+func HydrateSnapShot(ctx context.Context, s *Snapshot, stateMap TransitionTable) (*Flow, error) {
+	f := FromSnapshot(s, stateMap)
 	hydrationFn := HookRegistry().composeHydrationHooks(f.flowType)
 	if hydrationFn != nil {
 		var err error
@@ -315,7 +315,7 @@ func FromSnapShot(ctx context.Context, s *Snapshot, stateMap TransitionTable) (*
 }
 
 // FromSnapshot restores a flow from a Snapshot.
-func UnhydratedFromSnapshot(s *Snapshot, stateMap TransitionTable) *Flow {
+func FromSnapshot(s *Snapshot, stateMap TransitionTable) *Flow {
 	flow := Flow{
 		id:           s.ID,
 		flowType:     FlowType(s.Type),

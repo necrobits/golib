@@ -97,7 +97,7 @@ func (f *OrderFlowCreator) NewFlow(orderId string, amount int) *flow.Flow {
 }
 
 func (f *OrderFlowCreator) NewFlowFromSnapshot(s *flow.Snapshot) (*flow.Flow, error) {
-	return flow.FromSnapShot(context.Background(), s, f.transTable)
+	return flow.HydrateSnapShot(context.Background(), s, f.transTable)
 }
 
 func (f *OrderFlowCreator) HandleCancelation(ctx context.Context, state *OrderInternalState, a CancelAction) (flow.Event, *OrderInternalState, error) {
