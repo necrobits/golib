@@ -182,7 +182,7 @@ func (f *Flow) HandleAction(ctx context.Context, a Action) error {
 	} else {
 		nextState, ok = stateConfig.Transitions[inputEvent]
 		if !ok {
-			return fmt.Errorf("no transition found for event: %s", actionType)
+			return fmt.Errorf("no transition found for event: %s", inputEvent)
 		}
 		f.logf("<Action>%s -> <Event>%s\n", actionType, inputEvent)
 
