@@ -1,11 +1,13 @@
 package eventbus
 
+type Topic string
+
 type Event struct {
-	topic string
+	topic Topic
 	data  interface{}
 }
 
-func (e Event) Topic() string {
+func (e Event) Topic() Topic {
 	return e.topic
 }
 

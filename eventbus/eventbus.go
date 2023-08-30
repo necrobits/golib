@@ -4,29 +4,29 @@ import "sync"
 
 type EventBus struct {
 	rm          sync.RWMutex
-	subscribers map[string]EventChannels
+	subscribtions map[Topic]EventChannels
 }
 
 func NewEventBus() *EventBus {
 	return &EventBus{
-		subscribers: make(map[string]EventChannels),
+		subscribtions: make(map[Topic]EventChannels),
 	}
 }
 
-func (eb *EventBus) Subscribe(topic string, ch EventChannel) {
+func (eb *EventBus) Subscribe(topic Topic, ch EventChannel) {
 	eb.rm.Lock()
 	defer eb.rm.Unlock()
-	if _, found := eb.subscribers[topic]; !found {
-		eb.subscribers[topic] = EventChannels{ch}
+	if _, found := eb.subscribtions[topic]; !found {
+		eb.subscribtions[topic] = EventChannels{ch}
 	} else {
-		eb.subscribers[topic] = append(eb.subscribers[topic], ch)
+		eb.subscribtions[topic] = append(eb.subscribtions[topic], ch)
 	}
 }
 
-func (eb *EventBus) Publish(topic string, data interface{}) {
+func (eb *EventBus) Publish(topic Topic, data interface{}) {
 	eb.rm.RLock()
 	defer eb.rm.RUnlock()
-	if chans, found := eb.subscribers[topic]; found {
+	if chans, found := eb.subscribtions[topic]; found {
 		channels := make(EventChannels, len(chans))
 		copy(channels, chans)
 		go func(channels EventChannels, data interface{}) {
