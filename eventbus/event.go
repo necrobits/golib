@@ -7,6 +7,10 @@ type Event struct {
 	data  interface{}
 }
 
+func NewEvent(topic Topic, data interface{}) Event {
+	return Event{topic: topic, data: data}
+}
+
 func (e Event) Topic() Topic {
 	return e.topic
 }
