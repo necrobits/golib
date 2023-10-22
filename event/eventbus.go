@@ -1,9 +1,16 @@
-package eventbus
+package event
 
 import "sync"
 
+type EventChannel chan Event
+type EventChannels []EventChannel
+
+func NewEventChannel() EventChannel {
+	return make(EventChannel)
+}
+
 type EventBus struct {
-	rm          sync.RWMutex
+	rm            sync.RWMutex
 	subscribtions map[Topic]EventChannels
 }
 

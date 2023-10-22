@@ -1,9 +1,9 @@
 package configmanager
 
-import "github.com/necrobits/x/eventbus"
+import "github.com/necrobits/x/event"
 
-type EventQueue []eventbus.Event
+type EventQueue []event.Event
 
 func (q *EventQueue) add(topic Topic, data interface{}) {
-	*q = append(*q, eventbus.NewEvent(topic, data))
+	*q = append(*q, event.NewEvent(topic, data))
 }

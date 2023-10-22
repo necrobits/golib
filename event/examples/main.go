@@ -5,28 +5,28 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/necrobits/x/eventbus"
+	"github.com/necrobits/x/event"
 )
 
 const (
-	Topic1 eventbus.Topic = "topic1"
-	Topic2 eventbus.Topic = "topic2"
+	Topic1 event.Topic = "topic1"
+	Topic2 event.Topic = "topic2"
 )
 
-func printDataEvent(ch string, event eventbus.Event) {
+func printDataEvent(ch string, event event.Event) {
 	fmt.Printf("Channel: %s; Topic: %s; DataEvent: %v\n", ch, event.Topic(), event.Data())
 }
 
 func main() {
-	eb := eventbus.NewEventBus()
+	eb := event.NewEventBus()
 
-	ch1 := eventbus.NewEventChannel()
-	ch2 := eventbus.NewEventChannel()
+	ch1 := event.NewEventChannel()
+	ch2 := event.NewEventChannel()
 
 	eb.Subscribe(Topic1, ch1)
 	eb.Subscribe(Topic2, ch2)
 
-	publisTo := func(topic eventbus.Topic, data string) {
+	publisTo := func(topic event.Topic, data string) {
 		for {
 			eb.Publish(topic, data)
 			time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/necrobits/x/eventbus"
+	"github.com/necrobits/x/event"
 )
 
 const defaultTagKey = "cfg"
@@ -12,7 +12,7 @@ const defaultTagKey = "cfg"
 type Manager struct {
 	tagKey  string
 	rootCfg interface{}
-	eb      *eventbus.EventBus
+	eb      *event.EventBus
 }
 
 type ManagerOpts struct {
@@ -28,12 +28,12 @@ func NewManager(opts *ManagerOpts) *Manager {
 	return &Manager{
 		rootCfg: opts.RootCfg,
 		tagKey:  tagKey,
-		eb:      eventbus.NewEventBus(),
+		eb:      event.NewEventBus(),
 	}
 }
 
-func (m *Manager) Register(cfg RegistrableConfig) eventbus.EventChannel {
-	cfgCh := eventbus.NewEventChannel()
+func (m *Manager) Register(cfg RegistrableConfig) event.EventChannel {
+	cfgCh := event.NewEventChannel()
 	m.eb.Subscribe(cfg.Topic(), cfgCh)
 	return cfgCh
 }
