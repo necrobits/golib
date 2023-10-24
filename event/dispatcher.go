@@ -18,3 +18,7 @@ func (d *Dispatcher) Dispatch(event Event) error {
 	}
 	return nil
 }
+
+func (d *Dispatcher) AddListener(listener Listener) {
+	d.listeners = append(d.listeners, listener)
+}
