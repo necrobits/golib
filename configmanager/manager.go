@@ -11,12 +11,12 @@ const defaultTagKey = "cfg"
 
 type Manager struct {
 	tagKey  string
-	rootCfg interface{}
+	rootCfg Config
 	eb      *event.EventBus
 }
 
 type ManagerOpts struct {
-	RootCfg interface{}
+	RootCfg Config
 	TagKey  string
 }
 
@@ -30,6 +30,10 @@ func NewManager(opts *ManagerOpts) *Manager {
 		tagKey:  tagKey,
 		eb:      event.NewEventBus(),
 	}
+}
+
+func (m *Manager) RootConfig() Config {
+	return m.rootCfg
 }
 
 func (m *Manager) Register(cfg RegistrableConfig) event.EventChannel {
