@@ -42,6 +42,44 @@ func (m *Manager) Register(cfg RegistrableConfig) event.EventChannel {
 	return cfgCh
 }
 
+func (m *Manager) ValidateConfig() error {
+	return m.validate(reflect.ValueOf(m.rootCfg))
+}
+
+func (m *Manager) validate(cfg reflect.Value) error {
+	if validatableConfig, ok := cfg.Interface().(ValidatableConfig); ok {
+		if err := validatableConfig.Validate(); err != nil {
+			return err
+		}
+	}
+
+	switch cfg.Kind() {
+	case reflect.Struct:
+		for i := 0; i < cfg.NumField(); i++ {
+			field := cfg.Field(i)
+			if err := m.validate(field); err != nil {
+				return err
+			}
+		}
+	case reflect.Map:
+		for _, key := range cfg.MapKeys() {
+			if err := m.validate(cfg.MapIndex(key)); err != nil {
+				return err
+			}
+		}
+	case reflect.Ptr:
+		return m.validate(cfg.Elem())
+	case reflect.Slice:
+		for i := 0; i < cfg.Len(); i++ {
+			if err := m.validate(cfg.Index(i)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (m *Manager) Update(data map[string]interface{}) error {
 	var canAddr bool
 
