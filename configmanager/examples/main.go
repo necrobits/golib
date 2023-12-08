@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/necrobits/x/configmanager"
-	"github.com/necrobits/x/kvstore"
 )
 
 func main() {
@@ -43,15 +42,7 @@ func main() {
 		},
 	}
 
-	dottedCfg := configmanager.FlatConfig(cfg, "cfg")
-	data := make(map[string]kvstore.Data)
-	for k, v := range dottedCfg {
-		data[k] = v
-	}
-
-	memStore := &MemStore{
-		data: data,
-	}
+	memStore := NewMemStore()
 
 	cfgMng, err := configmanager.NewManager(&configmanager.ManagerOpts{
 		Store:   memStore,
@@ -90,7 +81,7 @@ func main() {
 	updateSystemName := func() {
 		fmt.Println("\nUpdating system name")
 		err := cfgMng.Update(map[string]interface{}{
-			"system.name": SystemName(fmt.Sprintf("New system %d", rand.Intn(100))),
+			"config.system.name": SystemName(fmt.Sprintf("New system %d", rand.Intn(100))),
 		})
 		if err != nil {
 			fmt.Println("Error updating system name: ", err)
@@ -107,7 +98,7 @@ func main() {
 			// 	Name:    "mac",
 			// 	Version: "10.1",
 			// },
-			"system.supported_os": OSConfigs{
+			"config.system.supported_os": OSConfigs{
 				{
 					Name:    "linux",
 					Version: "kernel x",
@@ -128,8 +119,8 @@ func main() {
 		port := rand.Intn(1000) + 3000
 		fmt.Println("\nUpdating database 1 config with port ", port)
 		err := cfgMng.Update(map[string]interface{}{
-			"system.database.db1.port": port,
-			"system.database.db1.name": "newdb1",
+			"config.system.database.db1.port": port,
+			"config.system.database.db1.name": "newdb1",
 		})
 		if err != nil {
 			fmt.Println("Error updating database 1 config: ", err)
@@ -141,7 +132,7 @@ func main() {
 		port := rand.Intn(1000) + 3000
 		fmt.Println("\nUpdating database 2 config with port ", port)
 		err := cfgMng.Update(map[string]interface{}{
-			"system.database.db2": DatabaseConfig{
+			"config.system.database.db2": DatabaseConfig{
 				Host: "localhostdb2",
 				Port: port,
 				Name: "Db2",
@@ -158,9 +149,9 @@ func main() {
 		testInt := rand.Intn(1000)
 		fmt.Println("\nUpdating server config with port ", port)
 		err := cfgMng.Update(map[string]interface{}{
-			"server.host":      "newserverhost",
-			"server.port":      port,
-			"server.test.name": "newtest" + strconv.Itoa(testInt),
+			"config.server.host":      "newserverhost",
+			"config.server.port":      port,
+			"config.server.test.name": "newtest" + strconv.Itoa(testInt),
 		})
 		if err != nil {
 			fmt.Println("Error updating server config: ", err)
@@ -171,7 +162,7 @@ func main() {
 
 	go func() {
 		for {
-			time.Sleep(time.Duration(500+rand.Intn(1500)) * time.Millisecond)
+			time.Sleep(time.Duration(rand.Intn(1500)) * time.Millisecond)
 			cfgToChange := rand.Intn(5)
 			switch cfgToChange {
 			case 0:
@@ -191,7 +182,7 @@ func main() {
 	go func() {
 		i := 0
 		for {
-			time.Sleep(time.Duration(1000+rand.Intn(1000)) * time.Millisecond)
+			time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 			printAllConfigs(i)
 			printMemStore(i)
 			i++
@@ -199,4 +190,5 @@ func main() {
 	}()
 
 	time.Sleep(5 * time.Second)
+
 }

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func FlatConfig(cfg Config, cfgTag string) map[string]interface{} {
+func flatConfig(cfg Config, cfgTag string) map[string]interface{} {
 	result := make(map[string]interface{})
 	toDottedNotationHelper(cfg, result, cfg.Name()+".", cfgTag)
 	return result

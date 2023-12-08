@@ -1,6 +1,7 @@
 package configmanager
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 
@@ -28,13 +29,14 @@ func NewManager(opts *ManagerOpts) (*Manager, error) {
 	if tagKey == "" {
 		tagKey = defaultTagKey
 	}
-	flattedCfg, err := opts.Store.GetAll()
+	flattedCfg := flatConfig(opts.RootCfg, tagKey)
+
+	persistedCfg, err := opts.Store.GetAll()
 	if err != nil {
 		return nil, err
 	}
-	casted := make(map[string]interface{})
-	for k, v := range flattedCfg {
-		casted[k] = v
+	for k, v := range persistedCfg {
+		flattedCfg[k] = v
 	}
 	manager := &Manager{
 		store:   opts.Store,
@@ -42,7 +44,7 @@ func NewManager(opts *ManagerOpts) (*Manager, error) {
 		tagKey:  tagKey,
 		eb:      event.NewEventBus(),
 	}
-	if err := manager.update(casted, false); err != nil {
+	if err := manager.Update(flattedCfg); err != nil {
 		return nil, err
 	}
 	return manager, nil
@@ -97,16 +99,18 @@ func (m *Manager) validate(cfg reflect.Value) error {
 }
 
 func (m *Manager) Update(data map[string]interface{}) error {
-	return m.update(data, true)
-}
-
-func (m *Manager) update(data map[string]interface{}, persisted bool) error {
 	var canAddr bool
 
 	dataValue := reflect.ValueOf(convertDotNotationToMap(data, m.tagKey))
 	eventQueue := make(EventQueue, 0)
 	rollbacks := make(RollbackList, 0)
 	changes := make(map[string]kvstore.Data)
+	_data := dataValue.MapIndex(reflect.ValueOf(m.rootCfg.Name()))
+	if !_data.IsValid() {
+		return fmt.Errorf("invalid config data")
+	} else {
+		_data = reflect.ValueOf(_data.Interface())
+	}
 
 	config := reflect.ValueOf(m.rootCfg)
 	if config.Kind() == reflect.Ptr {
@@ -119,24 +123,24 @@ func (m *Manager) update(data map[string]interface{}, persisted bool) error {
 		config = configPtr.Elem()
 	}
 
-	if err := m.updateConfig(&updateConfigParams{
-		changes:    changes,
+	params := &updateConfigParams{
 		cfg:        config,
-		data:       dataValue,
+		data:       _data,
+		dottedKey:  m.rootCfg.Name(),
+		changes:    changes,
 		eventQueue: &eventQueue,
 		rollbacks:  &rollbacks,
-		dottedKey:  m.rootCfg.Name(),
-	}); err != nil {
+	}
+
+	if err := m.updateConfig(params); err != nil {
 		rollbacks.rollback()
 		return err
 	}
 
-	if persisted {
-		err := m.store.SetMany(changes)
-		if err != nil {
-			rollbacks.rollback()
-			return err
-		}
+	err := m.store.SetMany(changes)
+	if err != nil {
+		rollbacks.rollback()
+		return err
 	}
 
 	if !canAddr {
