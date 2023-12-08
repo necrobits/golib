@@ -53,11 +53,14 @@ func main() {
 		data: data,
 	}
 
-	cfgMng := configmanager.NewManager(&configmanager.ManagerOpts{
+	cfgMng, err := configmanager.NewManager(&configmanager.ManagerOpts{
 		Store:   memStore,
 		RootCfg: cfg,
 		TagKey:  "cfg",
 	})
+	if err != nil {
+		panic(err)
+	}
 	mngA := NewManagerA(&ManagerADeps{
 		Name:           cfg.System.Name,
 		DatabaseConfig: cfg.System.Databasse,

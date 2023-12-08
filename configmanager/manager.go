@@ -23,17 +23,29 @@ type ManagerOpts struct {
 	Store   kvstore.KvStore
 }
 
-func NewManager(opts *ManagerOpts) *Manager {
+func NewManager(opts *ManagerOpts) (*Manager, error) {
 	tagKey := opts.TagKey
 	if tagKey == "" {
 		tagKey = defaultTagKey
 	}
-	return &Manager{
+	flattedCfg, err := opts.Store.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	casted := make(map[string]interface{})
+	for k, v := range flattedCfg {
+		casted[k] = v
+	}
+	manager := &Manager{
 		store:   opts.Store,
 		rootCfg: opts.RootCfg,
 		tagKey:  tagKey,
 		eb:      event.NewEventBus(),
 	}
+	if err := manager.update(casted, false); err != nil {
+		return nil, err
+	}
+	return manager, nil
 }
 
 func (m *Manager) RootConfig() Config {
@@ -85,6 +97,10 @@ func (m *Manager) validate(cfg reflect.Value) error {
 }
 
 func (m *Manager) Update(data map[string]interface{}) error {
+	return m.update(data, true)
+}
+
+func (m *Manager) update(data map[string]interface{}, persisted bool) error {
 	var canAddr bool
 
 	dataValue := reflect.ValueOf(convertDotNotationToMap(data, m.tagKey))
@@ -114,10 +130,13 @@ func (m *Manager) Update(data map[string]interface{}) error {
 		rollbacks.rollback()
 		return err
 	}
-	err := m.store.SetMany(changes)
-	if err != nil {
-		rollbacks.rollback()
-		return err
+
+	if persisted {
+		err := m.store.SetMany(changes)
+		if err != nil {
+			rollbacks.rollback()
+			return err
+		}
 	}
 
 	if !canAddr {

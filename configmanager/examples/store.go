@@ -12,6 +12,11 @@ type MemStore struct {
 	changes map[string]kvstore.Data
 }
 
+// GetAll implements kvstore.KvStore.
+func (store *MemStore) GetAll() (map[string]kvstore.Data, error) {
+	return store.data, nil
+}
+
 // DeleteMany implements kvstore.KvStore.
 func (store *MemStore) DeleteMany(keys []string) error {
 	for _, k := range keys {
