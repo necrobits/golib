@@ -11,24 +11,6 @@ import (
 )
 
 func main() {
-	memStore := &MemStore{
-		Data: map[string]kvstore.Data{
-			"config.system.name":                   "Test System",
-			"config.system.database.db1.host":      "localhost",
-			"config.system.database.db1.port":      3306,
-			"config.system.database.db1.name":      "db1",
-			"config.system.database.db2.host":      "localhost2",
-			"config.system.database.db2.port":      3308,
-			"config.system.database.db2.name":      "db2",
-			"config.system.supported_os.0.name":    "linux",
-			"config.system.supported_os.0.version": "li1",
-			"config.system.supported_os.1.name":    "windows",
-			"config.system.supported_os.1.version": "10",
-			"config.server.host":                   "localhost",
-			"config.server.port":                   8080,
-		},
-	}
-
 	cfg := Config{
 		System: SystemConfig{
 			Name: "Test System",
@@ -59,6 +41,16 @@ func main() {
 			Host: "localhost",
 			Port: 8080,
 		},
+	}
+
+	dottedCfg := configmanager.FlatConfig(cfg, "cfg")
+	data := make(map[string]kvstore.Data)
+	for k, v := range dottedCfg {
+		data[k] = v
+	}
+
+	memStore := &MemStore{
+		Data: data,
 	}
 
 	cfgMng := configmanager.NewManager(&configmanager.ManagerOpts{
@@ -203,36 +195,5 @@ func main() {
 		}
 	}()
 
-	time.Sleep(10 * time.Second)
-
-	// data := map[string]interface{}{
-	// 	"system.name": "Test System",
-	// 	"system.database.db1": DatabaseConfig{
-	// 		Host: "localhost",
-	// 		Port: 3306,
-	// 		Name: "db1",
-	// 	},
-	// 	"system.database.db2": DatabaseConfig{
-	// 		Host: "localhost2",
-	// 		Port: 3308,
-	// 		Name: "db2",
-	// 	},
-	// 	"system.supported_os": OSConfigs{
-	// 		{
-	// 			Name:    "linux",
-	// 			Version: "li1",
-	// 		},
-	// 		{
-	// 			Name:    "windows",
-	// 			Version: "10",
-	// 		},
-	// 	},
-	// 	"server": ServerConfig{
-	// 		Host: "localhost",
-	// 		Port: 8080,
-	// 	},
-	// }
-
-	// result := configmanager.TestConverter(data, "cfg")
-	// fmt.Println(result)
+	time.Sleep(5 * time.Second)
 }

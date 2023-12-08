@@ -6,34 +6,37 @@ import (
 	"strings"
 )
 
-func clone(val reflect.Value) reflect.Value {
-	if val.Kind() == reflect.Ptr {
-		if val.IsNil() {
-			newVal := reflect.New(val.Type().Elem())
-			val.Set(newVal)
-		} else {
-			newVal := reflect.New(val.Type().Elem())
-			newVal.Elem().Set(val.Elem())
-			return newVal
-		}
-	} else if val.Kind() == reflect.Map {
-		newVal := reflect.MakeMap(val.Type())
-		for _, key := range val.MapKeys() {
-			newVal.SetMapIndex(key, val.MapIndex(key))
-		}
-		return newVal
-	} else if val.Kind() == reflect.Slice {
-		newVal := reflect.MakeSlice(val.Type(), val.Len(), val.Len())
-		for i := 0; i < val.Len(); i++ {
-			newVal.Index(i).Set(val.Index(i))
-		}
-		return newVal
-	}
-	return val
+func FlatConfig(cfg Config, cfgTag string) map[string]interface{} {
+	result := make(map[string]interface{})
+	toDottedNotationHelper(cfg, result, cfg.Name()+".", cfgTag)
+	return result
 }
 
-func TestConverter(data map[string]interface{}, cfgTag string) map[string]interface{} {
-	return convertDotNotationToMap(data, cfgTag)
+func toDottedNotationHelper(cfg interface{}, result map[string]interface{}, prefix string, cfgTag string) {
+	cfgValue := reflect.ValueOf(cfg)
+	if cfgValue.Kind() == reflect.Ptr {
+		cfgValue = cfgValue.Elem()
+	}
+
+	if cfgValue.Kind() == reflect.Map {
+		for _, key := range cfgValue.MapKeys() {
+			toDottedNotationHelper(cfgValue.MapIndex(key).Interface(), result, prefix+key.String()+".", cfgTag)
+		}
+	} else if cfgValue.Kind() == reflect.Slice {
+		for i := 0; i < cfgValue.Len(); i++ {
+			toDottedNotationHelper(cfgValue.Index(i).Interface(), result, prefix+strconv.Itoa(i)+".", cfgTag)
+		}
+	} else if cfgValue.Kind() == reflect.Struct {
+		for i := 0; i < cfgValue.NumField(); i++ {
+			tag := cfgValue.Type().Field(i).Tag.Get(cfgTag)
+			if tag == "" {
+				tag = cfgValue.Type().Field(i).Name
+			}
+			toDottedNotationHelper(cfgValue.Field(i).Interface(), result, prefix+tag+".", cfgTag)
+		}
+	} else {
+		result[prefix[:len(prefix)-1]] = cfg
+	}
 }
 
 // convert from map of dot notation to map of map/value
@@ -98,4 +101,30 @@ func toPrimitiveMap(val interface{}, cfgTag string) interface{} {
 	} else {
 		return val
 	}
+}
+
+func clone(val reflect.Value) reflect.Value {
+	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			newVal := reflect.New(val.Type().Elem())
+			val.Set(newVal)
+		} else {
+			newVal := reflect.New(val.Type().Elem())
+			newVal.Elem().Set(val.Elem())
+			return newVal
+		}
+	} else if val.Kind() == reflect.Map {
+		newVal := reflect.MakeMap(val.Type())
+		for _, key := range val.MapKeys() {
+			newVal.SetMapIndex(key, val.MapIndex(key))
+		}
+		return newVal
+	} else if val.Kind() == reflect.Slice {
+		newVal := reflect.MakeSlice(val.Type(), val.Len(), val.Len())
+		for i := 0; i < val.Len(); i++ {
+			newVal.Index(i).Set(val.Index(i))
+		}
+		return newVal
+	}
+	return val
 }
