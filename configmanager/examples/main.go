@@ -50,7 +50,7 @@ func main() {
 	}
 
 	memStore := &MemStore{
-		Data: data,
+		data: data,
 	}
 
 	cfgMng := configmanager.NewManager(&configmanager.ManagerOpts{
@@ -79,7 +79,7 @@ func main() {
 
 	printMemStore := func(n int) {
 		fmt.Printf("\nMemstore (%d):\n", n)
-		for k, v := range memStore.Data {
+		for k, v := range memStore.data {
 			fmt.Printf("%s: %+v\n", k, v)
 		}
 	}

@@ -90,6 +90,7 @@ func (m *Manager) Update(data map[string]interface{}) error {
 	dataValue := reflect.ValueOf(convertDotNotationToMap(data, m.tagKey))
 	eventQueue := make(EventQueue, 0)
 	rollbacks := make(RollbackList, 0)
+	changes := make(map[string]kvstore.Data)
 
 	config := reflect.ValueOf(m.rootCfg)
 	if config.Kind() == reflect.Ptr {
@@ -102,21 +103,20 @@ func (m *Manager) Update(data map[string]interface{}) error {
 		config = configPtr.Elem()
 	}
 
-	err := m.store.Transaction(func(tx kvstore.KvStore) error {
-		if err := m.updateConfig(&updateConfigParams{
-			tx:         tx,
-			cfg:        config,
-			data:       dataValue,
-			eventQueue: &eventQueue,
-			rollbacks:  &rollbacks,
-			dottedKey:  m.rootCfg.Name(),
-		}); err != nil {
-			rollbacks.rollback()
-			return err
-		}
-		return nil
-	})
+	if err := m.updateConfig(&updateConfigParams{
+		changes:    changes,
+		cfg:        config,
+		data:       dataValue,
+		eventQueue: &eventQueue,
+		rollbacks:  &rollbacks,
+		dottedKey:  m.rootCfg.Name(),
+	}); err != nil {
+		rollbacks.rollback()
+		return err
+	}
+	err := m.store.SetMany(changes)
 	if err != nil {
+		rollbacks.rollback()
 		return err
 	}
 
@@ -131,7 +131,7 @@ func (m *Manager) Update(data map[string]interface{}) error {
 }
 
 type updateConfigParams struct {
-	tx         kvstore.KvStore
+	changes    map[string]kvstore.Data
 	cfg        reflect.Value
 	data       reflect.Value
 	dottedKey  string
@@ -145,7 +145,6 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 	eventQueue := params.eventQueue
 	rollbacks := params.rollbacks
 	dottedKey := params.dottedKey
-	tx := params.tx
 
 	if data.Kind() != reflect.Map {
 		oldCfg := reflect.New(cfg.Type()).Elem()
@@ -155,10 +154,7 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 			oldValue: oldCfg,
 		})
 		cfg.Set(data)
-		err := tx.Set(params.dottedKey, data.Interface())
-		if err != nil {
-			return err
-		}
+		params.changes[dottedKey] = kvstore.Data(data.Interface())
 		return publish(eventQueue, cfg)
 	}
 
