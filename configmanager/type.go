@@ -1,3 +1,5 @@
 package configmanager
 
-type Config interface{}
+type Config interface{
+	Name() string
+}

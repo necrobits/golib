@@ -14,6 +14,10 @@ type Config struct {
 	System SystemConfig `cfg:"system"`
 }
 
+func (c Config) Name() string {
+	return "config"
+}
+
 type ServerConfig struct {
 	Host string `cfg:"host"`
 	Port int    `cfg:"port"`
@@ -49,7 +53,8 @@ func (c DatabaseConfig) Topic() Topic {
 	return configmanager.Topic(fmt.Sprintf("database:%s", c.Name))
 }
 
-func (c *DatabaseConfig) Validate() error {
+func (c DatabaseConfig) Validate() error {
+	fmt.Println("Validating database config")
 	if c.Port%2 == 0 {
 		return nil
 	}

@@ -6,7 +6,8 @@ type Rollback struct {
 	value    reflect.Value
 	oldValue reflect.Value
 	// key is only valid if field is a map
-	key reflect.Value
+	key           reflect.Value
+	sliceAppended bool
 }
 
 type RollbackList []Rollback
@@ -16,6 +17,8 @@ func (l RollbackList) rollback() {
 		rb := l[i]
 		if rb.key.IsValid() {
 			rb.value.SetMapIndex(rb.key, rb.oldValue)
+		} else if rb.sliceAppended {
+			rb.value.SetLen(rb.value.Len() - 1)
 		} else {
 			rb.value.Set(rb.oldValue)
 		}

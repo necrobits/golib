@@ -5,11 +5,13 @@ import (
 	"strconv"
 
 	"github.com/necrobits/x/event"
+	"github.com/necrobits/x/kvstore"
 )
 
 const defaultTagKey = "cfg"
 
 type Manager struct {
+	store   kvstore.KvStore
 	tagKey  string
 	rootCfg Config
 	eb      *event.EventBus
@@ -18,6 +20,7 @@ type Manager struct {
 type ManagerOpts struct {
 	RootCfg Config
 	TagKey  string
+	Store   kvstore.KvStore
 }
 
 func NewManager(opts *ManagerOpts) *Manager {
@@ -26,6 +29,7 @@ func NewManager(opts *ManagerOpts) *Manager {
 		tagKey = defaultTagKey
 	}
 	return &Manager{
+		store:   opts.Store,
 		rootCfg: opts.RootCfg,
 		tagKey:  tagKey,
 		eb:      event.NewEventBus(),
@@ -83,7 +87,7 @@ func (m *Manager) validate(cfg reflect.Value) error {
 func (m *Manager) Update(data map[string]interface{}) error {
 	var canAddr bool
 
-	dataValue := reflect.ValueOf(convertDotNotationToMap(data))
+	dataValue := reflect.ValueOf(convertDotNotationToMap(data, m.tagKey))
 	eventQueue := make(EventQueue, 0)
 	rollbacks := make(RollbackList, 0)
 
@@ -98,13 +102,26 @@ func (m *Manager) Update(data map[string]interface{}) error {
 		config = configPtr.Elem()
 	}
 
-	if err := m.updateConfig(&eventQueue, &rollbacks, config, dataValue); err != nil {
-		rollbacks.rollback()
+	err := m.store.Transaction(func(tx kvstore.KvStore) error {
+		if err := m.updateConfig(&updateConfigParams{
+			tx:         tx,
+			cfg:        config,
+			data:       dataValue,
+			eventQueue: &eventQueue,
+			rollbacks:  &rollbacks,
+			dottedKey:  m.rootCfg.Name(),
+		}); err != nil {
+			rollbacks.rollback()
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 
 	if !canAddr {
-		m.rootCfg = config.Interface()
+		m.rootCfg = config.Interface().(Config)
 	}
 	for _, event := range eventQueue {
 		m.eb.Publish(event.Topic(), event.Data())
@@ -113,7 +130,23 @@ func (m *Manager) Update(data map[string]interface{}) error {
 	return nil
 }
 
-func (m *Manager) updateConfig(eventQueue *EventQueue, rollbacks *RollbackList, cfg reflect.Value, data reflect.Value) error {
+type updateConfigParams struct {
+	tx         kvstore.KvStore
+	cfg        reflect.Value
+	data       reflect.Value
+	dottedKey  string
+	eventQueue *EventQueue
+	rollbacks  *RollbackList
+}
+
+func (m *Manager) updateConfig(params *updateConfigParams) error {
+	data := params.data
+	cfg := params.cfg
+	eventQueue := params.eventQueue
+	rollbacks := params.rollbacks
+	dottedKey := params.dottedKey
+	tx := params.tx
+
 	if data.Kind() != reflect.Map {
 		oldCfg := reflect.New(cfg.Type()).Elem()
 		oldCfg.Set(cfg)
@@ -122,6 +155,10 @@ func (m *Manager) updateConfig(eventQueue *EventQueue, rollbacks *RollbackList, 
 			oldValue: oldCfg,
 		})
 		cfg.Set(data)
+		err := tx.Set(params.dottedKey, data.Interface())
+		if err != nil {
+			return err
+		}
 		return publish(eventQueue, cfg)
 	}
 
@@ -134,7 +171,10 @@ func (m *Manager) updateConfig(eventQueue *EventQueue, rollbacks *RollbackList, 
 			_data := data.MapIndex(reflect.ValueOf(tag))
 			if _data.IsValid() {
 				_data = reflect.ValueOf(_data.Interface())
-				if err := m.updateConfig(eventQueue, rollbacks, field, _data); err != nil {
+				params.cfg = field
+				params.data = _data
+				params.dottedKey = dottedKey + "." + tag
+				if err := m.updateConfig(params); err != nil {
 					return err
 				}
 			}
@@ -159,7 +199,10 @@ func (m *Manager) updateConfig(eventQueue *EventQueue, rollbacks *RollbackList, 
 			cfg.SetMapIndex(key, clone(_cfg))
 
 			_data := reflect.ValueOf(data.MapIndex(key).Interface())
-			if err := m.updateConfig(eventQueue, rollbacks, _cfg, _data); err != nil {
+			params.cfg = _cfg
+			params.data = _data
+			params.dottedKey = dottedKey + "." + key.String()
+			if err := m.updateConfig(params); err != nil {
 				return err
 			}
 			if !canAddr {
@@ -175,7 +218,9 @@ func (m *Manager) updateConfig(eventQueue *EventQueue, rollbacks *RollbackList, 
 	case reflect.Ptr:
 		_cfg := cfg.Elem()
 		_cfg.Set(clone(_cfg))
-		if err := m.updateConfig(eventQueue, rollbacks, _cfg, data); err != nil {
+		params.rollbacks = rollbacks
+		params.cfg = _cfg
+		if err := m.updateConfig(params); err != nil {
 			return err
 		}
 	case reflect.Slice:
@@ -187,9 +232,9 @@ func (m *Manager) updateConfig(eventQueue *EventQueue, rollbacks *RollbackList, 
 			len := cfg.Len()
 			if idx == len {
 				*rollbacks = append(*rollbacks, Rollback{
-					value:    cfg,
-					key:      key,
-					oldValue: reflect.Value{},
+					value:         cfg,
+					sliceAppended: true,
+					oldValue:      reflect.Value{},
 				})
 				cfg.Set(reflect.Append(cfg, reflect.New(cfg.Type().Elem()).Elem()))
 			}
@@ -197,7 +242,10 @@ func (m *Manager) updateConfig(eventQueue *EventQueue, rollbacks *RollbackList, 
 			_cfg.Set(clone(_cfg))
 
 			_data := reflect.ValueOf(data.MapIndex(key).Interface())
-			if err := m.updateConfig(eventQueue, rollbacks, _cfg, _data); err != nil {
+			params.cfg = _cfg
+			params.data = _data
+			params.dottedKey = dottedKey + "." + key.String()
+			if err := m.updateConfig(params); err != nil {
 				return err
 			}
 		}

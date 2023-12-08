@@ -2,6 +2,7 @@ package configmanager
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -31,14 +32,18 @@ func clone(val reflect.Value) reflect.Value {
 	return val
 }
 
+func TestConverter(data map[string]interface{}, cfgTag string) map[string]interface{} {
+	return convertDotNotationToMap(data, cfgTag)
+}
+
 // convert from map of dot notation to map of map/value
 // e.g. {"a.b.c": 1} => {"a": {"b": {"c": 1}}}
-func convertDotNotationToMap(data map[string]interface{}) map[string]interface{} {
+func convertDotNotationToMap(data map[string]interface{}, cfgTag string) map[string]interface{} {
 	result := make(map[string]interface{})
 	for k, v := range data {
 		keys := strings.Split(k, ".")
 		if len(keys) == 1 {
-			result[k] = v
+			result[k] = toPrimitiveMap(v, cfgTag)
 		} else {
 			currentMap := result
 			var ok bool
@@ -48,9 +53,49 @@ func convertDotNotationToMap(data map[string]interface{}) map[string]interface{}
 				}
 				currentMap = currentMap[keys[i]].(map[string]interface{})
 			}
-			currentMap[keys[len(keys)-1]] = v
+			currentMap[keys[len(keys)-1]] = toPrimitiveMap(v, cfgTag)
 		}
 
 	}
 	return result
+}
+
+// convert value to map of only primitive types
+func toPrimitiveMap(val interface{}, cfgTag string) interface{} {
+	if val == nil {
+		return nil
+	}
+
+	valValue := reflect.ValueOf(val)
+	if valValue.Kind() == reflect.Ptr {
+		valValue = valValue.Elem()
+	}
+
+	if valValue.Kind() == reflect.Map {
+		result := make(map[string]interface{})
+		for _, key := range valValue.MapKeys() {
+			result[key.String()] = toPrimitiveMap(valValue.MapIndex(key).Interface(), cfgTag)
+		}
+		return result
+	} else if valValue.Kind() == reflect.Slice {
+		result := make(map[string]interface{})
+		for i := 0; i < valValue.Len(); i++ {
+			key := strconv.Itoa(i)
+			result[key] = toPrimitiveMap(valValue.Index(i).Interface(), cfgTag)
+		}
+		return result
+	} else if valValue.Kind() == reflect.Struct {
+		result := make(map[string]interface{})
+		for i := 0; i < valValue.NumField(); i++ {
+			field := valValue.Field(i)
+			tag := valValue.Type().Field(i).Tag.Get(cfgTag)
+			if tag == "" {
+				tag = valValue.Type().Field(i).Name
+			}
+			result[tag] = toPrimitiveMap(field.Interface(), cfgTag)
+		}
+		return result
+	} else {
+		return val
+	}
 }

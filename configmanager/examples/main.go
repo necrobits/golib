@@ -7,9 +7,28 @@ import (
 	"time"
 
 	"github.com/necrobits/x/configmanager"
+	"github.com/necrobits/x/kvstore"
 )
 
 func main() {
+	memStore := &MemStore{
+		Data: map[string]kvstore.Data{
+			"config.system.name":                   "Test System",
+			"config.system.database.db1.host":      "localhost",
+			"config.system.database.db1.port":      3306,
+			"config.system.database.db1.name":      "db1",
+			"config.system.database.db2.host":      "localhost2",
+			"config.system.database.db2.port":      3308,
+			"config.system.database.db2.name":      "db2",
+			"config.system.supported_os.0.name":    "linux",
+			"config.system.supported_os.0.version": "li1",
+			"config.system.supported_os.1.name":    "windows",
+			"config.system.supported_os.1.version": "10",
+			"config.server.host":                   "localhost",
+			"config.server.port":                   8080,
+		},
+	}
+
 	cfg := Config{
 		System: SystemConfig{
 			Name: "Test System",
@@ -43,6 +62,7 @@ func main() {
 	}
 
 	cfgMng := configmanager.NewManager(&configmanager.ManagerOpts{
+		Store:   memStore,
 		RootCfg: cfg,
 		TagKey:  "cfg",
 	})
@@ -65,6 +85,13 @@ func main() {
 		fmt.Println()
 	}
 
+	printMemStore := func(n int) {
+		fmt.Printf("\nMemstore (%d):\n", n)
+		for k, v := range memStore.Data {
+			fmt.Printf("%s: %+v\n", k, v)
+		}
+	}
+
 	updateSystemName := func() {
 		fmt.Println("\nUpdating system name")
 		err := cfgMng.Update(map[string]interface{}{
@@ -79,22 +106,22 @@ func main() {
 	updateOSConfig := func() {
 		fmt.Println("\nUpdating OS config")
 		err := cfgMng.Update(map[string]interface{}{
-			"system.supported_os.1.name":    "new windows",
-			"system.supported_os.1.version": "11",
-			"system.supported_os.2": OSConfig{
-				Name:    "mac",
-				Version: "10.1",
-			},
-			// "system.supported_os": OSConfigs{
-			// 	{
-			// 		Name:    "linux",
-			// 		Version: "kernel x",
-			// 	},
-			// 	{
-			// 		Name:    "windows",
-			// 		Version: "10",
-			// 	},
+			// "system.supported_os.1.name":    "new windows",
+			// "system.supported_os.1.version": "11",
+			// "system.supported_os.2": OSConfig{
+			// 	Name:    "mac",
+			// 	Version: "10.1",
 			// },
+			"system.supported_os": OSConfigs{
+				{
+					Name:    "linux",
+					Version: "kernel x",
+				},
+				{
+					Name:    "windows",
+					Version: "10",
+				},
+			},
 		})
 		if err != nil {
 			fmt.Println("Error updating OS config: ", err)
@@ -171,9 +198,41 @@ func main() {
 		for {
 			time.Sleep(time.Duration(1000+rand.Intn(1000)) * time.Millisecond)
 			printAllConfigs(i)
+			printMemStore(i)
 			i++
 		}
 	}()
 
 	time.Sleep(10 * time.Second)
+
+	// data := map[string]interface{}{
+	// 	"system.name": "Test System",
+	// 	"system.database.db1": DatabaseConfig{
+	// 		Host: "localhost",
+	// 		Port: 3306,
+	// 		Name: "db1",
+	// 	},
+	// 	"system.database.db2": DatabaseConfig{
+	// 		Host: "localhost2",
+	// 		Port: 3308,
+	// 		Name: "db2",
+	// 	},
+	// 	"system.supported_os": OSConfigs{
+	// 		{
+	// 			Name:    "linux",
+	// 			Version: "li1",
+	// 		},
+	// 		{
+	// 			Name:    "windows",
+	// 			Version: "10",
+	// 		},
+	// 	},
+	// 	"server": ServerConfig{
+	// 		Host: "localhost",
+	// 		Port: 8080,
+	// 	},
+	// }
+
+	// result := configmanager.TestConverter(data, "cfg")
+	// fmt.Println(result)
 }
