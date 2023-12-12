@@ -31,6 +31,8 @@ func toDottedNotationHelper(cfg interface{}, result map[string]interface{}, pref
 			tag := cfgValue.Type().Field(i).Tag.Get(cfgTag)
 			if tag == "" {
 				tag = cfgValue.Type().Field(i).Name
+			} else if tag == "-" {
+				continue
 			}
 			toDottedNotationHelper(cfgValue.Field(i).Interface(), result, prefix+tag+".", cfgTag)
 		}
@@ -94,6 +96,8 @@ func toPrimitiveMap(val interface{}, cfgTag string) interface{} {
 			tag := valValue.Type().Field(i).Tag.Get(cfgTag)
 			if tag == "" {
 				tag = valValue.Type().Field(i).Name
+			} else if tag == "-" {
+				continue
 			}
 			result[tag] = toPrimitiveMap(field.Interface(), cfgTag)
 		}

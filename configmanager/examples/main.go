@@ -15,14 +15,16 @@ func main() {
 			Name: "Test System",
 			Databasse: DatabaseConfigMap{
 				"db1": {
-					Host: "localhost",
-					Port: 3306,
-					Name: "db1",
+					Host:    "localhost",
+					Port:    3306,
+					Name:    "db1",
+					NotSave: "not save 1",
 				},
 				"db2": {
-					Host: "localhost2",
-					Port: 3308,
-					Name: "db2",
+					Host:    "localhost2",
+					Port:    3308,
+					Name:    "db2",
+					NotSave: "not save 2",
 				},
 			},
 			SupportedOS: OSConfigs{
@@ -66,6 +68,8 @@ func main() {
 
 	printAllConfigs := func(n int) {
 		fmt.Printf("Config %d:\n", n)
+		rootCfg := cfgMng.RootConfig().(Config)
+		fmt.Printf("Root config: %+v\n", rootCfg)
 		mngA.PrintConfig()
 		mngB.PrintConfig()
 		fmt.Println()

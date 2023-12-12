@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/necrobits/x/configmanager"
 )
@@ -44,9 +43,10 @@ func (c SystemName) Topic() Topic {
 }
 
 type DatabaseConfig struct {
-	Host string `cfg:"host"`
-	Port int    `cfg:"port"`
-	Name string `cfg:"name"`
+	Host    string `cfg:"host"`
+	Port    int    `cfg:"port"`
+	Name    string `cfg:"name"`
+	NotSave string `cfg:"-"` // this field will not be saved
 }
 
 func (c DatabaseConfig) Topic() Topic {
@@ -80,12 +80,4 @@ type OSConfigs []OSConfig
 
 func (c OSConfigs) Topic() Topic {
 	return "supported_os"
-}
-
-func (c OSConfigs) Validate() error {
-	r := rand.Intn(2)
-	if r == 0 {
-		return fmt.Errorf("invalid OS config")
-	}
-	return nil
 }
