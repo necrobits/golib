@@ -221,7 +221,7 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 			}
 			cfg.SetMapIndex(castedKey, clone(_cfg))
 
-			_data := reflect.ValueOf(data.MapIndex(castedKey).Interface())
+			_data := reflect.ValueOf(data.MapIndex(key).Interface())
 			params.cfg = _cfg
 			params.data = _data
 			params.dottedKey = dottedKey + "." + castedKey.String()
