@@ -176,8 +176,10 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 			value:    cfg,
 			oldValue: oldCfg,
 		})
-		cfg.Set(data)
-		params.changes[dottedKey] = kvstore.Data(data.Interface())
+		cfgType := cfg.Type()
+		castedData := data.Convert(cfgType)
+		cfg.Set(castedData)
+		params.changes[dottedKey] = kvstore.Data(castedData.Interface())
 		return publish(eventQueue, cfg)
 	}
 
@@ -200,37 +202,39 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 		}
 	case reflect.Map:
 		for _, key := range data.MapKeys() {
-			_cfg := cfg.MapIndex(key)
+			keyType := cfg.Type().Key()
+			castedKey := key.Convert(keyType)
+			_cfg := cfg.MapIndex(castedKey)
 			if !_cfg.IsValid() {
 				*rollbacks = append(*rollbacks, Rollback{
 					value:    cfg,
-					key:      key,
+					key:      castedKey,
 					oldValue: reflect.Value{},
 				})
-				cfg.SetMapIndex(key, reflect.New(cfg.Type().Elem()).Elem())
+				cfg.SetMapIndex(castedKey, reflect.New(cfg.Type().Elem()).Elem())
 			}
 
 			canAddr := _cfg.CanAddr()
 			if !canAddr {
 				_cfg = reflect.New(_cfg.Type()).Elem()
-				_cfg.Set(cfg.MapIndex(key))
+				_cfg.Set(cfg.MapIndex(castedKey))
 			}
-			cfg.SetMapIndex(key, clone(_cfg))
+			cfg.SetMapIndex(castedKey, clone(_cfg))
 
-			_data := reflect.ValueOf(data.MapIndex(key).Interface())
+			_data := reflect.ValueOf(data.MapIndex(castedKey).Interface())
 			params.cfg = _cfg
 			params.data = _data
-			params.dottedKey = dottedKey + "." + key.String()
+			params.dottedKey = dottedKey + "." + castedKey.String()
 			if err := m.updateConfig(params); err != nil {
 				return err
 			}
 			if !canAddr {
 				*rollbacks = append(*rollbacks, Rollback{
 					value:    cfg,
-					key:      key,
+					key:      castedKey,
 					oldValue: _cfg,
 				})
-				cfg.SetMapIndex(key, _cfg)
+				cfg.SetMapIndex(castedKey, _cfg)
 			}
 
 		}
