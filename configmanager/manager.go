@@ -216,6 +216,7 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 					oldValue: reflect.Value{},
 				})
 				cfg.SetMapIndex(castedKey, reflect.New(cfg.Type().Elem()).Elem())
+				_cfg = cfg.MapIndex(castedKey)
 			}
 
 			canAddr := _cfg.CanAddr()
