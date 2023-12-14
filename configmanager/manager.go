@@ -44,7 +44,7 @@ func NewManager(opts *ManagerOpts) (*Manager, error) {
 		tagKey:  tagKey,
 		eb:      event.NewEventBus(),
 	}
-	if err := manager.Update(flattedCfg); err != nil {
+	if err := manager.UpdateWithoutValidation(flattedCfg); err != nil {
 		return nil, err
 	}
 	return manager, nil
@@ -102,7 +102,15 @@ func (m *Manager) validate(cfg reflect.Value) error {
 	return nil
 }
 
+func (m *Manager) UpdateWithoutValidation(data map[string]interface{}) error {
+	return m.setConfig(false, data)
+}
+
 func (m *Manager) Update(data map[string]interface{}) error {
+	return m.setConfig(true, data)
+}
+
+func (m *Manager) setConfig(withValidation bool, data map[string]interface{}) error {
 	var canAddr bool
 
 	dataValue := reflect.ValueOf(convertDotNotationToMap(data, m.tagKey))
@@ -128,12 +136,13 @@ func (m *Manager) Update(data map[string]interface{}) error {
 	}
 
 	params := &updateConfigParams{
-		cfg:        config,
-		data:       _data,
-		dottedKey:  m.rootCfg.Name(),
-		changes:    changes,
-		eventQueue: &eventQueue,
-		rollbacks:  &rollbacks,
+		withValidation: withValidation,
+		cfg:            config,
+		data:           _data,
+		dottedKey:      m.rootCfg.Name(),
+		changes:        changes,
+		eventQueue:     &eventQueue,
+		rollbacks:      &rollbacks,
 	}
 
 	if err := m.updateConfig(params); err != nil {
@@ -158,12 +167,13 @@ func (m *Manager) Update(data map[string]interface{}) error {
 }
 
 type updateConfigParams struct {
-	changes    map[string]kvstore.Data
-	cfg        reflect.Value
-	data       reflect.Value
-	dottedKey  string
-	eventQueue *EventQueue
-	rollbacks  *RollbackList
+	changes        map[string]kvstore.Data
+	withValidation bool
+	cfg            reflect.Value
+	data           reflect.Value
+	dottedKey      string
+	eventQueue     *EventQueue
+	rollbacks      *RollbackList
 }
 
 func (m *Manager) updateConfig(params *updateConfigParams) error {
@@ -184,7 +194,7 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 		castedData := data.Convert(cfgType)
 		cfg.Set(castedData)
 		params.changes[dottedKey] = kvstore.Data(castedData.Interface())
-		return publish(eventQueue, cfg)
+		return publish(params.withValidation, eventQueue, cfg)
 	}
 
 	switch cfg.Kind() {
@@ -301,11 +311,11 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 		}
 	}
 
-	return publish(eventQueue, cfg)
+	return publish(params.withValidation, eventQueue, cfg)
 }
 
-func publish(eventQueue *EventQueue, config reflect.Value) error {
-	if cfg, ok := config.Interface().(ValidatableConfig); ok {
+func publish(withValidation bool, eventQueue *EventQueue, config reflect.Value) error {
+	if cfg, ok := config.Interface().(ValidatableConfig); withValidation && ok {
 		if err := cfg.Validate(); err != nil {
 			return err
 		}
