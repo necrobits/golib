@@ -206,6 +206,13 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 		}
 	case reflect.Map:
 		for _, key := range data.MapKeys() {
+			if cfg.IsNil() {
+				*rollbacks = append(*rollbacks, Rollback{
+					value:    cfg,
+					oldValue: reflect.Value{},
+				})
+				cfg.Set(reflect.MakeMap(cfg.Type()))
+			}
 			keyType := cfg.Type().Key()
 			castedKey := key.Convert(keyType)
 			_cfg := cfg.MapIndex(castedKey)
@@ -256,6 +263,14 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 			idx, err := strconv.Atoi(key.String())
 			if err != nil {
 				return err
+			}
+			if cfg.IsNil() {
+				*rollbacks = append(*rollbacks, Rollback{
+					value:         cfg,
+					sliceAppended: true,
+					oldValue:      reflect.Value{},
+				})
+				cfg.Set(reflect.MakeSlice(cfg.Type(), 0, 0))
 			}
 			len := cfg.Len()
 			if idx == len {
