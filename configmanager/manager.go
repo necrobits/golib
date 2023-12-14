@@ -29,7 +29,7 @@ func NewManager(opts *ManagerOpts) (*Manager, error) {
 	if tagKey == "" {
 		tagKey = defaultTagKey
 	}
-	flattedCfg := flatConfig(opts.RootCfg, tagKey)
+	flattedCfg := dotFlatConfig(opts.RootCfg, tagKey)
 
 	persistedCfg, err := opts.Store.GetAll()
 	if err != nil {
@@ -52,6 +52,10 @@ func NewManager(opts *ManagerOpts) (*Manager, error) {
 
 func (m *Manager) RootConfig() Config {
 	return m.rootCfg
+}
+
+func (m *Manager) DotFlatRootConfig() map[string]interface{} {
+	return dotFlatConfig(m.rootCfg, m.tagKey)
 }
 
 func (m *Manager) Register(cfg RegistrableConfig) event.EventChannel {
