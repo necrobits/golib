@@ -251,6 +251,13 @@ func (m *Manager) updateConfig(params *updateConfigParams) error {
 
 		}
 	case reflect.Ptr:
+		if cfg.IsNil() {
+			*rollbacks = append(*rollbacks, Rollback{
+				value:    cfg,
+				oldValue: reflect.Value{},
+			})
+			cfg.Set(reflect.New(cfg.Type().Elem()))
+		}
 		_cfg := cfg.Elem()
 		_cfg.Set(clone(_cfg))
 		params.rollbacks = rollbacks
