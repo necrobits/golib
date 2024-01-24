@@ -18,7 +18,9 @@ func toDottedNotationHelper(cfg interface{}, result map[string]interface{}, pref
 		cfgValue = cfgValue.Elem()
 	}
 
-	if cfgValue.Kind() == reflect.Map {
+	if cfgValue.Type().String() == "json.RawMessage" {
+		result[prefix[:len(prefix)-1]] = cfg
+	} else if cfgValue.Kind() == reflect.Map {
 		for _, key := range cfgValue.MapKeys() {
 			toDottedNotationHelper(cfgValue.MapIndex(key).Interface(), result, prefix+key.String()+".", cfgTag)
 		}
@@ -76,7 +78,9 @@ func toPrimitiveMap(val interface{}, cfgTag string) interface{} {
 		valValue = valValue.Elem()
 	}
 
-	if valValue.Kind() == reflect.Map {
+	if valValue.Type().String() == "json.RawMessage" {
+		return val
+	} else if valValue.Kind() == reflect.Map {
 		result := make(map[string]interface{})
 		for _, key := range valValue.MapKeys() {
 			result[key.String()] = toPrimitiveMap(valValue.MapIndex(key).Interface(), cfgTag)
