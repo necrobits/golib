@@ -21,6 +21,14 @@ func NewManager(store kvstore.KvStore) *Manager {
 	}
 }
 
+func (m *Manager) ValidateConfig(key string, cfg Config) error {
+	validator, ok := m.validators[key]
+	if !ok {
+		return nil
+	}
+	return validator(cfg)
+}
+
 func (m *Manager) Get(ctx context.Context, key string) (Config, error) {
 	return m.store.Get(ctx, key)
 }
