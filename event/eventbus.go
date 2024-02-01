@@ -43,3 +43,8 @@ func (eb *EventBus) Publish(topic Topic, data interface{}) {
 		}(channels, data)
 	}
 }
+
+func (eb *EventBus) HasSubscribers(topic Topic) bool {
+	_, found := eb.subscribtions[topic]
+	return found
+}
