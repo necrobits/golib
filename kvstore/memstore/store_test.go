@@ -9,7 +9,7 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	store := &Store{
+	store := &store{
 		data: map[string]kvstore.Data{
 			"key1": "value1",
 			"key2": "value2",
@@ -38,7 +38,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
-	store := &Store{
+	store := &store{
 		data: make(map[string]kvstore.Data),
 	}
 
@@ -53,7 +53,7 @@ func TestSet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	store := &Store{
+	store := &store{
 		data: map[string]kvstore.Data{
 			"key1": "value1",
 			"key2": "value2",
@@ -71,7 +71,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestTransaction(t *testing.T) {
-	store := &Store{
+	store := &store{
 		data: map[string]kvstore.Data{
 			"key1": "value1",
 			"key2": "value2",
@@ -102,7 +102,7 @@ func TestTransaction(t *testing.T) {
 }
 
 func TestTransactionFailed(t *testing.T) {
-	store := &Store{
+	store := &store{
 		data: map[string]kvstore.Data{
 			"key1": "value1",
 			"key2": "value2",

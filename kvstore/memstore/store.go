@@ -8,23 +8,23 @@ import (
 	"github.com/necrobits/x/kvstore"
 )
 
-var _ kvstore.KvStore = &Store{}
+var _ kvstore.KvStore = &store{}
 
 var ErrKeyNotFound = "key_not_found"
 
-type Store struct {
+type store struct {
 	mu   sync.RWMutex
 	data map[string]kvstore.Data
 }
 
-func New() *Store {
-	return &Store{
+func New() *store {
+	return &store{
 		data: make(map[string]kvstore.Data),
 	}
 }
 
 // Delete implements kvstore.KvStore.
-func (s *Store) Delete(ctx context.Context, key string) error {
+func (s *store) Delete(ctx context.Context, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.data, key)
@@ -32,7 +32,7 @@ func (s *Store) Delete(ctx context.Context, key string) error {
 }
 
 // Get implements kvstore.KvStore.
-func (s *Store) Get(ctx context.Context, key string) (kvstore.Data, error) {
+func (s *store) Get(ctx context.Context, key string) (kvstore.Data, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -48,7 +48,7 @@ func (s *Store) Get(ctx context.Context, key string) (kvstore.Data, error) {
 }
 
 // Set implements kvstore.KvStore.
-func (s *Store) Set(ctx context.Context, key string, value kvstore.Data) error {
+func (s *store) Set(ctx context.Context, key string, value kvstore.Data) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.data[key] = value
@@ -56,7 +56,7 @@ func (s *Store) Set(ctx context.Context, key string, value kvstore.Data) error {
 }
 
 // Transaction implements kvstore.KvStore.
-func (s *Store) Transaction(ctx context.Context, fn func(tx kvstore.KvStore) error) error {
+func (s *store) Transaction(ctx context.Context, fn func(tx kvstore.KvStore) error) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -65,7 +65,7 @@ func (s *Store) Transaction(ctx context.Context, fn func(tx kvstore.KvStore) err
 		clonedData[k] = v
 	}
 
-	tx := &Store{
+	tx := &store{
 		data: clonedData,
 	}
 
