@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/necrobits/x/errors"
+	"github.com/necrobits/x/kvstore"
 	"github.com/necrobits/x/kvstore/memstore"
 )
 
@@ -35,7 +36,7 @@ func TestGet(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected error, got nil")
 		}
-		if !errors.Is(err, memstore.ErrKeyNotFound) {
+		if !errors.Is(err, kvstore.ErrKeyNotFound) {
 			t.Errorf("unexpected error %v", err)
 		}
 	})

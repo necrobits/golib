@@ -29,6 +29,21 @@ func (m *Manager) ValidateConfig(key string, cfg Config) error {
 	return validator(cfg)
 }
 
+func (m *Manager) GetAll(ctx context.Context) (map[string]Config, error) {
+	cfgs := make(map[string]Config)
+
+	data, err := m.store.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range data {
+		cfgs[k] = v.(Config)
+	}
+
+	return cfgs, nil
+}
+
 func (m *Manager) Get(ctx context.Context, key string) (Config, error) {
 	return m.store.Get(ctx, key)
 }
@@ -53,7 +68,7 @@ func (m *Manager) UpdateOne(ctx context.Context, key string, cfg Config) error {
 }
 
 func (m *Manager) UpdateMany(ctx context.Context, cfgs map[string]Config) error {
-	var dataMap = make(map[string]kvstore.Data)
+	var dataMap = make(map[string]any)
 
 	err := m.store.Transaction(ctx, func(tx kvstore.KvStore) error {
 		for key, cfg := range cfgs {
