@@ -10,7 +10,7 @@ import (
 
 func TestGet(t *testing.T) {
 	store := &store{
-		data: map[string]kvstore.Data{
+		data: map[string]any{
 			"key1": "value1",
 			"key2": "value2",
 		},
@@ -31,15 +31,57 @@ func TestGet(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected error, got nil")
 		}
-		if !errors.Is(err, ErrKeyNotFound) {
+		if !errors.Is(err, kvstore.ErrKeyNotFound) {
 			t.Errorf("unexpected error %v", err)
 		}
 	})
 }
 
+func TestGetAll(t *testing.T) {
+	store := &store{
+		data: map[string]any{
+			"key1": "value1",
+			"key2": "value2",
+		},
+	}
+
+	data, err := store.GetAll(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if data["key1"] != "value1" {
+		t.Errorf("unexpected data: %v", data["key1"])
+	}
+	if data["key2"] != "value2" {
+		t.Errorf("unexpected data: %v", data["key2"])
+	}
+}
+
+func TestGetMany(t *testing.T) {
+	store := &store{
+		data: map[string]any{
+			"key1": "value1",
+			"key2": "value2",
+		},
+	}
+
+	data, err := store.GetMany(context.Background(), []string{"key1", "key2"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if data["key1"] != "value1" {
+		t.Errorf("unexpected data: %v", data["key1"])
+	}
+	if data["key2"] != "value2" {
+		t.Errorf("unexpected data: %v", data["key2"])
+	}
+}
+
 func TestSet(t *testing.T) {
 	store := &store{
-		data: make(map[string]kvstore.Data),
+		data: make(map[string]any),
 	}
 
 	err := store.Set(context.Background(), "key1", "value1")
@@ -52,9 +94,30 @@ func TestSet(t *testing.T) {
 	}
 }
 
+func TestSetMany(t *testing.T) {
+	store := &store{
+		data: make(map[string]any),
+	}
+
+	err := store.SetMany(context.Background(), map[string]any{
+		"key1": "value1",
+		"key2": "value2",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if store.data["key1"] != "value1" {
+		t.Errorf("unexpected data: %v", store.data["key1"])
+	}
+	if store.data["key2"] != "value2" {
+		t.Errorf("unexpected data: %v", store.data["key2"])
+	}
+}
+
 func TestDelete(t *testing.T) {
 	store := &store{
-		data: map[string]kvstore.Data{
+		data: map[string]any{
 			"key1": "value1",
 			"key2": "value2",
 		},
@@ -70,9 +133,45 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+func TestDeleteMany(t *testing.T) {
+	store := &store{
+		data: map[string]any{
+			"key1": "value1",
+			"key2": "value2",
+		},
+	}
+
+	err := store.DeleteMany(context.Background(), []string{"key1", "key2"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(store.data) != 0 {
+		t.Errorf("unexpected data: %v", store.data)
+	}
+}
+
+func TestDeleteAll(t *testing.T) {
+	store := &store{
+		data: map[string]any{
+			"key1": "value1",
+			"key2": "value2",
+		},
+	}
+
+	err := store.DeleteAll(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(store.data) != 0 {
+		t.Errorf("unexpected data: %v", store.data)
+	}
+}
+
 func TestTransaction(t *testing.T) {
 	store := &store{
-		data: map[string]kvstore.Data{
+		data: map[string]any{
 			"key1": "value1",
 			"key2": "value2",
 		},
@@ -103,7 +202,7 @@ func TestTransaction(t *testing.T) {
 
 func TestTransactionFailed(t *testing.T) {
 	store := &store{
-		data: map[string]kvstore.Data{
+		data: map[string]any{
 			"key1": "value1",
 			"key2": "value2",
 		},

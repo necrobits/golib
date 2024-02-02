@@ -10,17 +10,72 @@ import (
 
 var _ kvstore.KvStore = &store{}
 
-var ErrKeyNotFound = "key_not_found"
-
 type store struct {
 	mu   sync.RWMutex
-	data map[string]kvstore.Data
+	data map[string]any
 }
 
 func New() *store {
 	return &store{
-		data: make(map[string]kvstore.Data),
+		data: make(map[string]any),
 	}
+}
+
+// DeleteAll implements kvstore.KvStore.
+func (s *store) DeleteAll(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data = make(map[string]any)
+	return nil
+}
+
+// DeleteMany implements kvstore.KvStore.
+func (s *store) DeleteMany(ctx context.Context, keys []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, key := range keys {
+		delete(s.data, key)
+	}
+	return nil
+}
+
+// SetMany implements kvstore.KvStore.
+func (s *store) SetMany(ctx context.Context, data map[string]any) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for k, v := range data {
+		s.data[k] = v
+	}
+	return nil
+}
+
+// GetAll implements kvstore.KvStore.
+func (s *store) GetAll(ctx context.Context) (map[string]any, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	data := make(map[string]any)
+	for k, v := range s.data {
+		data[k] = v
+	}
+
+	return data, nil
+}
+
+// GetMany implements kvstore.KvStore.
+func (s *store) GetMany(ctx context.Context, keys []string) (map[string]any, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	data := make(map[string]any)
+	for _, key := range keys {
+		v, ok := s.data[key]
+		if ok {
+			data[key] = v
+		}
+	}
+
+	return data, nil
 }
 
 // Delete implements kvstore.KvStore.
@@ -32,14 +87,14 @@ func (s *store) Delete(ctx context.Context, key string) error {
 }
 
 // Get implements kvstore.KvStore.
-func (s *store) Get(ctx context.Context, key string) (kvstore.Data, error) {
+func (s *store) Get(ctx context.Context, key string) (any, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	data, ok := s.data[key]
 	if !ok {
 		return nil, errors.B().
-			Code(ErrKeyNotFound).
+			Code(kvstore.ErrKeyNotFound).
 			Op("memstore.Get").
 			Msgf("key %s not found", key).Build()
 	}
@@ -48,7 +103,7 @@ func (s *store) Get(ctx context.Context, key string) (kvstore.Data, error) {
 }
 
 // Set implements kvstore.KvStore.
-func (s *store) Set(ctx context.Context, key string, value kvstore.Data) error {
+func (s *store) Set(ctx context.Context, key string, value any) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.data[key] = value
@@ -60,7 +115,7 @@ func (s *store) Transaction(ctx context.Context, fn func(tx kvstore.KvStore) err
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	clonedData := make(map[string]kvstore.Data)
+	clonedData := make(map[string]any)
 	for k, v := range s.data {
 		clonedData[k] = v
 	}
