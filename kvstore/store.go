@@ -3,6 +3,7 @@ package kvstore
 import "context"
 
 type KvStore interface {
+	Has(ctx context.Context, key string) (bool, error)
 	Get(ctx context.Context, key string) (any, error)
 	GetAll(ctx context.Context) (map[string]any, error)
 	GetMany(ctx context.Context, keys []string) (map[string]any, error)

@@ -8,6 +8,35 @@ import (
 	"github.com/necrobits/x/kvstore"
 )
 
+func TestHas(t *testing.T) {
+	store := &store{
+		data: map[string]any{
+			"key1": "value1",
+			"key2": "value2",
+		},
+	}
+
+	t.Run("found", func(t *testing.T) {
+		ok, err := store.Has(context.Background(), "key1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !ok {
+			t.Errorf("expected key to be found")
+		}
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		ok, err := store.Has(context.Background(), "key3")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ok {
+			t.Errorf("expected key to not be found")
+		}
+	})
+}
+
 func TestGet(t *testing.T) {
 	store := &store{
 		data: map[string]any{
@@ -31,7 +60,7 @@ func TestGet(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected error, got nil")
 		}
-		if !errors.Is(err, kvstore.ErrKeyNotFound) {
+		if !errors.Is(err, ErrKeyNotFound) {
 			t.Errorf("unexpected error %v", err)
 		}
 	})

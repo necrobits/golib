@@ -10,6 +10,10 @@ import (
 
 var _ kvstore.KvStore = &store{}
 
+var (
+	ErrKeyNotFound = "key_not_found"
+)
+
 type store struct {
 	mu   sync.RWMutex
 	data map[string]any
@@ -19,6 +23,14 @@ func New() *store {
 	return &store{
 		data: make(map[string]any),
 	}
+}
+
+// Has implements kvstore.KvStore.
+func (s *store) Has(ctx context.Context, key string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	_, ok := s.data[key]
+	return ok, nil
 }
 
 // DeleteAll implements kvstore.KvStore.
@@ -94,7 +106,7 @@ func (s *store) Get(ctx context.Context, key string) (any, error) {
 	data, ok := s.data[key]
 	if !ok {
 		return nil, errors.B().
-			Code(kvstore.ErrKeyNotFound).
+			Code(ErrKeyNotFound).
 			Op("memstore.Get").
 			Msgf("key %s not found", key).Build()
 	}
