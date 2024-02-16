@@ -21,7 +21,9 @@ func (w *ConfigWatcher[T]) Listen(callbackFn func(T) error) {
 		for cfg := range w.ch {
 			castedCfg := cfg.(T)
 			w.cfg = castedCfg
-			callbackFn(castedCfg)
-		}
+			if callbackFn != nil {
+				callbackFn(castedCfg)
+			}
+		}	
 	}()
 }
