@@ -1,10 +1,16 @@
 package validator
 
 import (
-	"errors"
 	"net/mail"
 	"slices"
 	"strings"
+
+	"github.com/necrobits/x/errors"
+)
+
+const (
+	EInvalidEmail   = "invalid_email"
+	EUnallowedEmail = "unallowed_email"
 )
 
 type EmailValidationConfig struct {
@@ -15,7 +21,10 @@ type EmailValidationConfig struct {
 func ValidateEmail(email string, config EmailValidationConfig) error {
 	_, err := mail.ParseAddress(email)
 	if err != nil {
-		return err
+		return errors.B().
+			Code(EInvalidEmail).
+			Msg("invalid email format").
+			Build()
 	}
 
 	if len(config.WhiteListDomains) > 0 {
@@ -25,7 +34,10 @@ func ValidateEmail(email string, config EmailValidationConfig) error {
 
 		domain := strings.Split(email, "@")[1]
 		if !slices.Contains(config.WhiteListDomains, domain) && config.BlockOtherDomains {
-			return errors.New("email is not allowed")
+			return errors.B().
+				Code(EUnallowedEmail).
+				Msg("email is not allowed").
+				Build()
 		}
 	}
 
