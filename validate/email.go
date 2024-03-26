@@ -14,8 +14,8 @@ const (
 )
 
 type EmailValidationConfig struct {
-	WhiteListDomains  []string `json:"whiteListDomains"`
-	BlockOtherDomains bool     `json:"blockOtherDomains"`
+	WhiteListedDomains []string `json:"whiteListedDomains"`
+	BlockOtherDomains  bool     `json:"blockOtherDomains"`
 }
 
 func ValidateEmail(email string, config EmailValidationConfig) error {
@@ -27,13 +27,13 @@ func ValidateEmail(email string, config EmailValidationConfig) error {
 			Build()
 	}
 
-	if len(config.WhiteListDomains) > 0 {
-		if slices.Contains(config.WhiteListDomains, "*") {
+	if len(config.WhiteListedDomains) > 0 {
+		if slices.Contains(config.WhiteListedDomains, "*") {
 			return nil
 		}
 
 		domain := strings.Split(email, "@")[1]
-		if !slices.Contains(config.WhiteListDomains, domain) && config.BlockOtherDomains {
+		if !slices.Contains(config.WhiteListedDomains, domain) && config.BlockOtherDomains {
 			return errors.B().
 				Code(EUnallowedEmail).
 				Msg("email is not allowed").
