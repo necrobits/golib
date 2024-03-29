@@ -14,8 +14,8 @@ const (
 )
 
 type EmailValidationConfig struct {
-	WhiteListedDomains []string `json:"whiteListedDomains"`
-	BlockOtherDomains  bool     `json:"blockOtherDomains"`
+	WhiteListedDomains []string `json:"whiteListedDomains" mapstructure:"white_listed_domains"`
+	BlockOtherDomains  bool     `json:"blockOtherDomains" mapstructure:"block_other_domains"`
 }
 
 func ValidateEmail(email string, config EmailValidationConfig) error {

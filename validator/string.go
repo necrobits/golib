@@ -6,14 +6,14 @@ import (
 )
 
 type StringValidationConfig struct {
-	MinLength           int    `json:"minLength"`
-	MaxLength           int    `json:"maxLength"`
-	MinDigits           int    `json:"minDigits"`
-	MinUppers           int    `json:"minUppers"`
-	MinLowers           int    `json:"minLowers"`
-	MinSpecials         int    `json:"minSpecials"`
-	WhitespaceAllowed   bool   `json:"whitespaceAllowed"`
-	AllowedSpecialChars string `json:"allowedSpecialChars"`
+	MinLength           int    `json:"minLength" mapstructure:"min_length"`
+	MaxLength           int    `json:"maxLength" mapstructure:"max_length"`
+	MinDigits           int    `json:"minDigits" mapstructure:"min_digits"`
+	MinUppers           int    `json:"minUppers" mapstructure:"min_uppers"`
+	MinLowers           int    `json:"minLowers" mapstructure:"min_lowers"`
+	MinSpecials         int    `json:"minSpecials" mapstructure:"min_specials"`
+	WhitespaceAllowed   bool   `json:"whitespaceAllowed" mapstructure:"whitespace_allowed"`
+	AllowedSpecialChars string `json:"allowedSpecialChars" mapstructure:"allowed_special_chars"`
 }
 
 func ValidateString(str string, config StringValidationConfig) error {
