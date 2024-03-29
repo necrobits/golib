@@ -95,7 +95,7 @@ func TestManagerValidator(t *testing.T) {
 	t.Run("RegisterValidator_WithConfigRegistration", func(t *testing.T) {
 		m := NewManager(memstore.New())
 
-		_, err := m.RegisterConfig("test", &TestConfig{})
+		err := m.RegisterConfig("test", &TestConfig{})
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -107,7 +107,7 @@ func TestManagerValidator(t *testing.T) {
 
 	t.Run("ValidateAll_Valid", func(t *testing.T) {
 		m := NewManager(memstore.New())
-		_, err := m.RegisterConfig("test", &TestConfig{
+		err := m.RegisterConfig("test", &TestConfig{
 			StrField: "test",
 		})
 		if err != nil {
@@ -125,7 +125,7 @@ func TestManagerValidator(t *testing.T) {
 
 	t.Run("ValidateAll_Invalid", func(t *testing.T) {
 		m := NewManager(memstore.New())
-		_, err := m.RegisterConfig("test", &TestConfig{
+		err := m.RegisterConfig("test", &TestConfig{
 			StrField: "invalid",
 		})
 		if err != nil {
@@ -154,7 +154,7 @@ func TestManagerRegisterConfig(t *testing.T) {
 
 	t.Run("WithoutStoreData_WithoutDefault", func(t *testing.T) {
 		m := simpleManager(nil)
-		_, err := m.RegisterConfig("test", &TestConfig{})
+		err := m.RegisterConfig("test", &TestConfig{})
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -173,7 +173,7 @@ func TestManagerRegisterConfig(t *testing.T) {
 			IntField: 1,
 		}
 		m := simpleManager(nil)
-		_, err := m.RegisterConfig("test", defaultCfg)
+		err := m.RegisterConfig("test", defaultCfg)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -208,7 +208,7 @@ func TestManagerRegisterConfig(t *testing.T) {
 		m := simpleManager(map[string]json.RawMessage{
 			"test": expectedCfgBytes,
 		})
-		_, err = m.RegisterConfig("test", &TestConfig{})
+		err = m.RegisterConfig("test", &TestConfig{})
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -225,7 +225,7 @@ func TestManagerRegisterConfig(t *testing.T) {
 
 	t.Run("WithStoreData_InvalidDefault", func(t *testing.T) {
 		m := simpleManager(nil)
-		_, err := m.RegisterConfig("test", nil)
+		err := m.RegisterConfig("test", nil)
 		if err == nil {
 			t.Fatalf("expected error, got nil")
 		}
@@ -235,7 +235,38 @@ func TestManagerRegisterConfig(t *testing.T) {
 	})
 }
 
-func TestManagerUpdateOne(t *testing.T) {
+func TestManagerSubscribeConfig(t *testing.T) {
+	t.Run("NotFound", func(t *testing.T) {
+		m := simpleManager(nil)
+		ch, err := m.SubscribeConfig("test")
+		if err == nil {
+			t.Fatalf("expected error, got nil")
+		}
+		if !errors.Is(err, ErrKeyNotRegistered) {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if ch != nil {
+			t.Fatalf("expected nil, got %v", ch)
+		}
+	})
+
+	t.Run("Found", func(t *testing.T) {
+		m := simpleManager(nil)
+		err := m.RegisterConfig("test", &struct{}{})
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		ch, err := m.SubscribeConfig("test")
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if ch == nil {
+			t.Fatalf("expected channel, got nil")
+		}
+	})
+}
+
+func TestManagerSubscribeAndUpdateOne(t *testing.T) {
 	type TestConfig struct {
 		StrField string `json:"str_field"`
 	}
@@ -253,7 +284,7 @@ func TestManagerUpdateOne(t *testing.T) {
 
 	t.Run("InvalidData_WithoutValidator", func(t *testing.T) {
 		m := simpleManager(nil)
-		_, err := m.RegisterConfig("test", &TestConfig{})
+		err := m.RegisterConfig("test", &TestConfig{})
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -265,7 +296,7 @@ func TestManagerUpdateOne(t *testing.T) {
 
 	t.Run("InvalidData_WithValidator", func(t *testing.T) {
 		m := simpleManager(nil)
-		_, err := m.RegisterConfig("test", &TestConfig{})
+		err := m.RegisterConfig("test", &TestConfig{})
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -283,9 +314,13 @@ func TestManagerUpdateOne(t *testing.T) {
 
 	t.Run("ValidData_WithoutValidator", func(t *testing.T) {
 		m := simpleManager(nil)
-		cfgCh, err := m.RegisterConfig("test", &TestConfig{
+		err := m.RegisterConfig("test", &TestConfig{
 			StrField: "test",
 		})
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		cfgCh, err := m.SubscribeConfig("test")
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -304,9 +339,13 @@ func TestManagerUpdateOne(t *testing.T) {
 
 	t.Run("ValidData_WithValidator", func(t *testing.T) {
 		m := simpleManager(nil)
-		cfgCh, err := m.RegisterConfig("test", &TestConfig{
+		err := m.RegisterConfig("test", &TestConfig{
 			StrField: "test",
 		})
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		cfgCh, err := m.SubscribeConfig("test")
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
