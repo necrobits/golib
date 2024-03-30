@@ -71,7 +71,7 @@ func (m *Manager) RegisterConfig(key string, defaultConfig Config) error {
 		}
 		m.cfgs[key] = defaultConfig
 	} else {
-		var storedCfg json.RawMessage
+		var storedCfg []byte
 		err := m.store.Get(ctx, key, &storedCfg)
 		if err != nil {
 			return err
@@ -155,7 +155,7 @@ func (m *Manager) Get(ctx context.Context, key string) (Config, error) {
 	return m.getConfig(key)
 }
 
-func (m *Manager) UpdateOne(ctx context.Context, key string, configData json.RawMessage) error {
+func (m *Manager) UpdateOne(ctx context.Context, key string, configData []byte) error {
 	newCfg, err := m.updateConfig(ctx, key, configData, nil)
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func (m *Manager) UpdateOne(ctx context.Context, key string, configData json.Raw
 	return nil
 }
 
-func (m *Manager) UpdateMany(ctx context.Context, configDatas map[string]json.RawMessage) error {
+func (m *Manager) UpdateMany(ctx context.Context, configDatas map[string][]byte) error {
 	var newCfgs = make(map[string]Config)
 
 	err := m.store.Transaction(ctx, func(tx kvstore.KvStore) error {
@@ -193,7 +193,7 @@ func (m *Manager) UpdateMany(ctx context.Context, configDatas map[string]json.Ra
 	return nil
 }
 
-func (m *Manager) updateConfig(ctx context.Context, key string, newConfigData json.RawMessage, tx kvstore.KvStore) (Config, error) {
+func (m *Manager) updateConfig(ctx context.Context, key string, newConfigData []byte, tx kvstore.KvStore) (Config, error) {
 	currentCfg, err := m.getConfig(key)
 	if err != nil {
 		return nil, err
