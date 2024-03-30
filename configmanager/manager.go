@@ -32,7 +32,7 @@ func NewManager(store kvstore.KvStore) *Manager {
 
 // RegisterConfig registers a new config in the manager with the given key.
 //
-// If the key is already registered, an error will be returned.
+// If the key is already registered, no error will be returned.
 //
 // If there is a value stored in the store for the given key, it will be used as the config,
 // otherwise the defaultConfig will be used.
@@ -71,18 +71,13 @@ func (m *Manager) RegisterConfig(key string, defaultConfig Config) error {
 		}
 		m.cfgs[key] = defaultConfig
 	} else {
-		storedCfg, err := m.store.Get(ctx, key)
+		var storedCfg json.RawMessage
+		err := m.store.Get(ctx, key, &storedCfg)
 		if err != nil {
 			return err
 		}
-		castedStoredCfg, ok := storedCfg.(json.RawMessage)
-		if !ok {
-			return errors.B().
-				Code(errors.EMalformedData).
-				Msg("stored config is not a valid json").Build()
-		}
 		cfg := reflect.New(rt).Interface()
-		err = json.Unmarshal(castedStoredCfg, cfg)
+		err = json.Unmarshal(storedCfg, cfg)
 		if err != nil {
 			return err
 		}
