@@ -2,6 +2,7 @@ package memstore
 
 import (
 	"context"
+	"reflect"
 	"sync"
 
 	"github.com/necrobits/x/errors"
@@ -62,32 +63,30 @@ func (s *store) SetMany(ctx context.Context, data map[string]any) error {
 }
 
 // GetAll implements kvstore.KvStore.
-func (s *store) GetAll(ctx context.Context) (map[string]any, error) {
+func (s *store) GetAll(ctx context.Context, values map[string]any) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	data := make(map[string]any)
 	for k, v := range s.data {
-		data[k] = v
+		values[k] = v
 	}
 
-	return data, nil
+	return nil
 }
 
 // GetMany implements kvstore.KvStore.
-func (s *store) GetMany(ctx context.Context, keys []string) (map[string]any, error) {
+func (s *store) GetMany(ctx context.Context, keys []string, values map[string]any) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	data := make(map[string]any)
 	for _, key := range keys {
 		v, ok := s.data[key]
 		if ok {
-			data[key] = v
+			values[key] = v
 		}
 	}
 
-	return data, nil
+	return nil
 }
 
 // Delete implements kvstore.KvStore.
@@ -99,19 +98,22 @@ func (s *store) Delete(ctx context.Context, key string) error {
 }
 
 // Get implements kvstore.KvStore.
-func (s *store) Get(ctx context.Context, key string) (any, error) {
+func (s *store) Get(ctx context.Context, key string, value any) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	data, ok := s.data[key]
 	if !ok {
-		return nil, errors.B().
+		return errors.B().
 			Code(ErrKeyNotFound).
 			Op("memstore.Get").
 			Msgf("key %s not found", key).Build()
 	}
 
-	return data, nil
+	// copy data to value using reflection
+	v := reflect.ValueOf(value)
+	v.Elem().Set(reflect.ValueOf(data))
+	return nil
 }
 
 // Set implements kvstore.KvStore.

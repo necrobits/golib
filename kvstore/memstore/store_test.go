@@ -46,7 +46,8 @@ func TestGet(t *testing.T) {
 	}
 
 	t.Run("found", func(t *testing.T) {
-		data, err := store.Get(context.Background(), "key1")
+		var data string
+		err := store.Get(context.Background(), "key1", &data)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -56,7 +57,8 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		_, err := store.Get(context.Background(), "key3")
+		var data string
+		err := store.Get(context.Background(), "key3", &data)
 		if err == nil {
 			t.Fatalf("expected error, got nil")
 		}
@@ -74,7 +76,8 @@ func TestGetAll(t *testing.T) {
 		},
 	}
 
-	data, err := store.GetAll(context.Background())
+	var data map[string]any = make(map[string]any)
+	err := store.GetAll(context.Background(), data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -95,7 +98,9 @@ func TestGetMany(t *testing.T) {
 		},
 	}
 
-	data, err := store.GetMany(context.Background(), []string{"key1", "key2"})
+	var data map[string]any = make(map[string]any)
+
+	err := store.GetMany(context.Background(), []string{"key1", "key2"}, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
