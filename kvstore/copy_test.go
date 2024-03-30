@@ -46,6 +46,19 @@ func TestCopy(t *testing.T) {
 		require.Equal(t, src, dst)
 	})
 
+	t.Run("Success_String_Bytes", func(t *testing.T) {
+		var src string = "test"
+		var dst []byte
+		err := Copy(src, &dst)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if string(dst) != src {
+			t.Errorf("expected src and dst to be equal")
+		}
+		require.Equal(t, src, string(dst))
+	})
+
 	t.Run("Success_Interface", func(t *testing.T) {
 		var src interface{} = "test"
 		var dst interface{}

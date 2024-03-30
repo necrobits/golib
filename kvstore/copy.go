@@ -21,14 +21,19 @@ func Copy(src any, dest any) error {
 			Msg("destination should be a pointer").Build()
 	}
 
-	// Check if src is assignable to dest
-	if !srcVal.Type().AssignableTo(destVal.Elem().Type()) {
-		return errors.B().
-			Code(EUnassignable).
-			Msg("source is not assignable to destination").Build()
+	destVal = destVal.Elem()
+	srcType := srcVal.Type()
+	destType := destVal.Type()
+
+	if srcType.AssignableTo(destType) {
+		destVal.Set(srcVal)
+		return nil
+	} else if srcType.ConvertibleTo(destType) {
+		destVal.Set(srcVal.Convert(destType))
+		return nil
 	}
 
-	destVal.Elem().Set(srcVal)
-
-	return nil
+	return errors.B().
+		Code(EUnassignable).
+		Msg("source and destination are not assignable").Build()
 }
