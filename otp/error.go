@@ -1,6 +1,6 @@
 package otp
 
 const (
-	ErrCodeExpired string = "otp code is expired"
-	ErrCodeInvalid string = "otp code is invalid"
+	ErrCodeExpired string = "code_expired"
+	ErrCodeInvalid string = "invalid_code"
 )
