@@ -34,6 +34,8 @@ type Flow struct {
 	completionHooks []silentHookFn
 }
 
+var _ StateMachine = (*Flow)(nil)
+
 // FlowData is the internal data of the flow. This can be anything.
 type FlowData interface{}
 type FlowType string
